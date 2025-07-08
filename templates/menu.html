@@ -1,58 +1,17 @@
 <!-- templates/menu.html -->
- <!DOCTYPE html>
- <html>
-    <head>
-        <title>
-            Hotel Club
-        </title>
-    </head>
-    <body>
-        <h1>Menu</h1>
-        <ul>
-            <li><a href="/rooms">View All Rooms</a></li>
-            
-        <h2>Create New Room</h2>
-        <form action="/rooms/create_room" method="post">
-            <label>Category:</label>
-            <input type="text" name="category" required><br><br>
-
-            <label>Cost:</label>
-            <input type="number" name="cost" required><br><br>
-
-            <label>Floor Number:</label>
-            <input type="number" name="floor_number" required><br><br>
-
-            <label>Guest Name (optional):</label>
-            <input type="text" name="guest_name"><br><br>
-
-            <button type="submit">Create Room</button>
-        </form>
-
-        <h2>Delete Room</h2>
-        <form action="/rooms/delete_room" method="post">
-            <label>Room_ID:</label>
-            <input type="number" name="room_id" required><br><br>
-            <button type="submit">Delete Room</button>
-        </form>
-
-        <h2>Update Room</h2>
-        <form action="/rooms/update_room" method="post">
-            <label>Room ID:</label>
-            <input type="number" name="room_id" required><br>
-
-            <label>Category:</label>
-            <input type="text" name="category" required><br>
-
-            <label>Cost:</label>
-            <input type="number" name="cost" required><br>
-
-            <label>Floor Number:</label>
-            <input type="number" name="floor_number" required><br>
-
-            <label>Guest Name (Optional):</label>
-            <input type="text" name="guest_name"><br>
-
-            <button type="submit">Update Room</button>
-        </ul>
-    </body>
- </html>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hotel Club</title>
+</head>
+<body>
+    <h1>Hotel Menu</h1>
+    <ul>
+        <li><a href="/rooms">View All Rooms</a></li>
+        <li><a href="/form/create_room">Create New Room</a></li>
+        <li><a href="/form/delete_room">Delete Room</a></li>
+        <li><a href="/form/update_room">Update Room</a></li>
+        <li><a href="/form/check_in">Check In</a></li>
+    </ul>
+</body>
+</html>

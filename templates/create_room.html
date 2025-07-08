@@ -1,0 +1,23 @@
+<!-- templates/create_room.html -->
+<!DOCTYPE html>
+<html>
+<head><title>Create Room</title></head>
+<body>
+    <h2>Create New Room</h2>
+    <form action="/rooms/create_room" method="post">
+        <label>Category:</label>
+        <input type="text" name="category" required><br><br>
+
+        <label>Cost:</label>
+        <input type="number" name="cost" required><br><br>
+
+        <label>Floor Number:</label>
+        <input type="number" name="floor_number" required><br><br>
+
+        <label>Guest Name (optional):</label>
+        <input type="text" name="guest_name"><br><br>
+
+        <button type="submit">Create Room</button>
+    </form>
+</body>
+</html>

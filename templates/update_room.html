@@ -1,0 +1,31 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Update Room</title>
+</head>
+<body>
+    <h2>Update Room</h2>
+    <form action="/rooms/update_room" method="post">
+        <label>Room ID:</label>
+        <input type="number" name="room_id" required><br><br>
+
+        <label>Category:</label>
+        <select name="category">
+            <option value="Single">Single</option>
+            <option value="Double">Double</option>
+        </select><br><br>
+
+        <label>Cost:</label>
+        <input type="number" name="cost"><br><br>
+
+        <label>Floor Number:</label>
+        <input type="number" name="floor_number"><br><br>
+
+        <label>Guest Name (Optional):</label>
+        <input type="text" name="guest_name"><br><br>
+
+        <button type="submit">Update Room</button>
+    </form>
+</body>
+</html>

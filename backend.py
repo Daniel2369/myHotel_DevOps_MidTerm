@@ -52,11 +52,28 @@ templates = Jinja2Templates(directory="templates") # Loading the menu.html file
 
 
 '''
-Calling the menu.html file to be loaded
+Calling templates/*.html files
 '''
 @app.get("/", response_class=HTMLResponse)
 async def menu(request: Request):
     return templates.TemplateResponse("menu.html", {"request": request})
+
+@app.get("/form/create_room", response_class=HTMLResponse)
+async def create_room_form(request: Request):
+    return templates.TemplateResponse("create_room.html", {"request": request})
+
+@app.get("/form/update_room", response_class=HTMLResponse)
+async def update_room_form(request: Request):
+    return templates.TemplateResponse("update_room.html", {"request": request})
+
+@app.get("/form/delete_room", response_class=HTMLResponse)
+async def delete_room_form(request: Request):
+    return templates.TemplateResponse("delete_room.html", {"request": request})
+
+@app.get("/form/check_in", response_class=HTMLResponse)
+async def check_in_form(request: Request):
+    return templates.TemplateResponse("check_in.html", {"request": request})
+
 
 @app.get("/rooms", status_code=status.HTTP_200_OK)
 async def get_rooms():
@@ -92,8 +109,6 @@ async def delete_room(
         return {"message": "Room deleted successfully", "room_id": room_id}
     else:
         return {"error": "Room not found", "room_id": room_id}
-    
-from fastapi import Form
 
 @app.post("/rooms/update_room", status_code=status.HTTP_200_OK)
 async def update_room(
@@ -117,3 +132,20 @@ async def update_room(
     }
 
     return {"message": "Room updated successfully", "room_id": room_id}
+
+@app.post("/rooms/check-in")
+async def check_in(
+    guest_name: str = Form(...),
+    category: str = Form(...)
+):
+    global room_db
+    for room_id, room in room_db.items():
+        if not room["occupied"] and room["category"] == category:
+            room["guest_name"] = guest_name
+            room["occupied"] = True
+        return {
+                "message": "Guest was successfully assigned to room",
+                "room_id": room_id
+            }
+    
+    return {"message": "No available room in that category."}
