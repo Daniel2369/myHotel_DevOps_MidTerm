@@ -74,6 +74,10 @@ async def delete_room_form(request: Request):
 async def check_in_form(request: Request):
     return templates.TemplateResponse("check_in.html", {"request": request})
 
+@app.get("/form/check_out", response_class=HTMLResponse)
+async def check_in_form(request: Request):
+    return templates.TemplateResponse("check_out.html", {"request": request})
+
 
 @app.get("/rooms", status_code=status.HTTP_200_OK)
 async def get_rooms():
@@ -149,3 +153,19 @@ async def check_in(
                 }
     
     return {"message": "No available room in that category."}
+
+@app.post("/rooms/check_out")
+async def check_out(
+    room_id: int = Form(...),
+    guest_name: str = Form(...)
+):
+    if room_id in room_db: 
+        if room_db[room_id]["guest_name"] == guest_name:
+            room_db[room_id]["guest_name"] = None
+            room_db[room_id]["occupied"] = False
+            return {
+                "message": f"{guest_name} was checked_out from room",
+                "room_id": room_id
+            }
+    
+    return {"message": "Couldn't complete the check_out"}
