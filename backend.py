@@ -114,28 +114,37 @@ async def delete_room(
     else:
         return {"error": "Room not found", "room_id": room_id}
 
-@app.post("/rooms/update_room", status_code=status.HTTP_200_OK)
+@app.post("/rooms/update_room", response_class=HTMLResponse, status_code=status.HTTP_200_OK)
 async def update_room(
+    request: Request,
     room_id: int = Form(...),
     category: str = Form(...),
     cost: int = Form(...),
     floor_number: int = Form(...),
     guest_name: str = Form(None)
 ):
-    global room_db
 
-    if room_id not in room_db:
-        return {"error": "Room not found", "room_id": room_id}
+    if room_id in room_db:
+        room = room_db[room_id]
 
-    room_db[room_id] = {
-        "category": category,
-        "cost": cost,
-        "floor_number": floor_number,
-        "guest_name": guest_name,
-        "occupied": bool(guest_name)
-    }
+        room.update({
+            "category": category,
+            "cost": cost,
+            "floor_number": floor_number,
+            "guest_name": guest_name,
+            "occupied": bool(guest_name)
+        })
+        message = f"Room {room_id} was successfully updated."
+        is_error = False
+    else:
+        message = f"Room {room_id} not found."
+        is_error = True
 
-    return {"message": "Room updated successfully", "room_id": room_id}
+    return templates.TemplateResponse("update_room.html", {
+        "request": request,
+        "message": message,
+        "is_error": is_error
+    })
 
 @app.post("/rooms/check_in")
 async def check_in(
