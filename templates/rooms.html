@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>All Rooms</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 90%;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .occupied {
+            background-color: #fdd;
+        }
+        .vacant {
+            background-color: #dfd;
+        }
+    </style>
+</head>
+<body>
+    <h1>All Rooms</h1>
+    <table>
+        <tr>
+            <th>Room ID</th>
+            <th>Category</th>
+            <th>Cost</th>
+            <th>Floor</th>
+            <th>Guest</th>
+            <th>Occupied</th>
+        </tr>
+        {% for room_id, room in rooms.items() %}
+        <tr class="{{ 'occupied' if room.occupied else 'vacant' }}">
+            <td>{{ room_id }}</td>
+            <td>{{ room.category }}</td>
+            <td>{{ room.cost }}</td>
+            <td>{{ room.floor_number }}</td>
+            <td>{{ room.guest_name or '—' }}</td>
+            <td>{{ 'Yes' if room.occupied else 'No' }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <br>
+    <a href="/">Back to Menu</a>
+</body>
+</html>
