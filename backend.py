@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates # Frontend library using html templates
 from starlette import status
+import random
 
 
 # Declare an empty DB
@@ -20,16 +21,25 @@ def setup_rooms(total_rooms=20):
     """
     global room_db
     room_db = {}
+    guest_names = ("Daniel", "Idan", "Yosi", "Aviva", "Daniela")
     print("Setting up rooms...")
     for room_id in range(1, total_rooms + 1):
         floor_number = (room_id - 1) // 10 + 1  # Calculate floor based on room ID
         room_category = "Single" if room_id % 2 == 1 else "Double"
         cost = 100 if room_category == "Single" else 150
+        if random.random() < 0.5: # 50% chance for a room to occupied
+            guest_name = random.choice(guest_names)
+            occupied = True
+        else:
+            guest_name = None
+            occupied = False
+
         room_db[room_id] = {
             "category": room_category,
             "cost": cost,
             "floor_number": floor_number,
-            "guest_name": None
+            "guest_name": guest_name,
+            "occupied": bool(guest_name)
         }
 
 @asynccontextmanager
@@ -66,7 +76,8 @@ async def create_room(
     "category": category,
     "cost": cost,
     "floor_number": floor_number,
-    "guest_name": guest_name
+    "guest_name": guest_name,
+    "occupied": bool(guest_name)
     }
     
     return {"message": "Room created successfully", "room_id": new_room_id}
