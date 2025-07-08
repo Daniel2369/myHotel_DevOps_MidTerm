@@ -1,18 +1,63 @@
-<!-- templates/menu.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <title>Hotel Club</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 100px auto;
+            padding: 40px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 40px;
+            font-size: 36px;
+            color: #333;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            margin: 20px 0;
+        }
+
+        a {
+            text-decoration: none;
+            font-size: 20px;
+            color: #0077cc;
+            transition: color 0.3s;
+        }
+
+        a:hover {
+            color: #005fa3;
+        }
+    </style>
 </head>
 <body>
-    <h1>Hotel Menu</h1>
-    <ul>
-        <li><a href="/rooms">View All Rooms</a></li>
-        <li><a href="/form/create_room">Create New Room</a></li>
-        <li><a href="/form/delete_room">Delete Room</a></li>
-        <li><a href="/form/update_room">Update Room</a></li>
-        <li><a href="/form/check_in">Check In</a></li>
-        <li><a href="/form/check_out">Check Out</a></li>
-    </ul>
+    <div class="container">
+        <h1>Hotel Menu</h1>
+        <ul>
+            <li><a href="/rooms">View All Rooms</a></li>
+            <li><a href="/form/create_room">Create New Room</a></li>
+            <li><a href="/form/delete_room">Delete Room</a></li>
+            <li><a href="/form/update_room">Update Room</a></li>
+            <li><a href="/form/check_in">Check In</a></li>
+            <li><a href="/form/check_out">Check Out</a></li>
+        </ul>
+    </div>
 </body>
 </html>

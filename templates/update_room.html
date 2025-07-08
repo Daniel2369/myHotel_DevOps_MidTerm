@@ -3,31 +3,104 @@
 <html>
 <head>
     <title>Update Room</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 100px auto;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        h2 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        input, select {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 12px;
+            font-size: 18px;
+            border: none;
+            border-radius: 6px;
+            background-color: #0077cc;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #005fa3;
+        }
+
+        a {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 16px;
+            text-decoration: none;
+            color: #0077cc;
+        }
+
+        a:hover {
+            color: #005fa3;
+        }
+    </style>
 </head>
 <body>
-    <h2>Update Room</h2>
-    <form action="/rooms/update_room" method="post">
-        <label>Room ID:</label>
-        <input type="number" name="room_id" required><br><br>
+    <div class="container">
+        <h2>Update Room</h2>
+        <form action="/rooms/update_room" method="post">
+            <label>Room ID:</label>
+            <input type="number" name="room_id" required>
 
-        <label>Category:</label>
-        <select name="category">
-            <option value="Single">Single</option>
-            <option value="Double">Double</option>
-        </select><br><br>
+            <label>Category:</label>
+            <select name="category">
+                <option value="Single">Single</option>
+                <option value="Double">Double</option>
+            </select>
 
-        <label>Cost:</label>
-        <input type="number" name="cost"><br><br>
+            <label>Cost:</label>
+            <input type="number" name="cost">
 
-        <label>Floor Number:</label>
-        <input type="number" name="floor_number"><br><br>
+            <label>Floor Number:</label>
+            <input type="number" name="floor_number">
 
-        <label>Guest Name (Optional):</label>
-        <input type="text" name="guest_name"><br><br>
+            <label>Guest Name (Optional):</label>
+            <input type="text" name="guest_name">
 
-        <button type="submit">Update Room</button>
-    </form>
-    <br>
-    <a href="/">Back to Menu</a>
+            <button type="submit">Update Room</button>
+        </form>
+        <a href="/">Back to Menu</a>
+    </div>
 </body>
 </html>
+
