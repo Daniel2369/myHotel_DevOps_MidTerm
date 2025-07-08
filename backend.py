@@ -92,3 +92,28 @@ async def delete_room(
         return {"message": "Room deleted successfully", "room_id": room_id}
     else:
         return {"error": "Room not found", "room_id": room_id}
+    
+from fastapi import Form
+
+@app.post("/rooms/update_room", status_code=status.HTTP_200_OK)
+async def update_room(
+    room_id: int = Form(...),
+    category: str = Form(...),
+    cost: int = Form(...),
+    floor_number: int = Form(...),
+    guest_name: str = Form(None)
+):
+    global room_db
+
+    if room_id not in room_db:
+        return {"error": "Room not found", "room_id": room_id}
+
+    room_db[room_id] = {
+        "category": category,
+        "cost": cost,
+        "floor_number": floor_number,
+        "guest_name": guest_name,
+        "occupied": bool(guest_name)
+    }
+
+    return {"message": "Room updated successfully", "room_id": room_id}

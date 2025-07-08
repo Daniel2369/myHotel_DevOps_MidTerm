@@ -34,6 +34,25 @@
             <input type="number" name="room_id" required><br><br>
             <button type="submit">Delete Room</button>
         </form>
+
+        <h2>Update Room</h2>
+        <form action="/rooms/update_room" method="post">
+            <label>Room ID:</label>
+            <input type="number" name="room_id" required><br>
+
+            <label>Category:</label>
+            <input type="text" name="category" required><br>
+
+            <label>Cost:</label>
+            <input type="number" name="cost" required><br>
+
+            <label>Floor Number:</label>
+            <input type="number" name="floor_number" required><br>
+
+            <label>Guest Name (Optional):</label>
+            <input type="text" name="guest_name"><br>
+
+            <button type="submit">Update Room</button>
         </ul>
     </body>
  </html>
