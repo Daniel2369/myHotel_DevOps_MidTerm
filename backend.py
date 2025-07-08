@@ -1,5 +1,5 @@
 # Import Libraries
-from fastapi import FastAPI, Request # Backend app library fastapi
+from fastapi import FastAPI, Request, Form # Backend app library fastapi
 from contextlib import asynccontextmanager
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates # Frontend library using html templates
@@ -51,3 +51,22 @@ async def menu(request: Request):
 @app.get("/rooms", status_code=status.HTTP_200_OK)
 async def get_rooms():
     return room_db
+
+@app.post("/rooms/create_room", status_code=status.HTTP_201_CREATED)
+async def create_room(
+    category: str = Form(...),
+    cost: int = Form(...),
+    floor_number: int = Form(...),
+    guest_name: str = Form(None)
+):
+
+    new_room_id = max(room_db.keys(), default=0) + 1 # Will append id automatically
+
+    room_db[new_room_id] = {
+    "category": category,
+    "cost": cost,
+    "floor_number": floor_number,
+    "guest_name": guest_name
+    }
+    
+    return {"message": "Room created successfully", "room_id": new_room_id}
