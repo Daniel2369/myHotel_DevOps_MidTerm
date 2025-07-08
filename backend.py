@@ -1,7 +1,7 @@
 # Import Libraries
 from fastapi import FastAPI, Request, Form # Backend app library fastapi
 from contextlib import asynccontextmanager
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates # Frontend library using html templates
 from starlette import status
 import random
@@ -79,9 +79,24 @@ async def check_in_form(request: Request):
     return templates.TemplateResponse("check_out.html", {"request": request})
 
 
-@app.get("/rooms", status_code=status.HTTP_200_OK)
+
+def stringify_my_dict(room_db: dict) -> str:
+    prettify_db = []
+    for room_id, details in room_db.items():
+        room_info = (
+            f"Room Number: {room_id}\n"
+            f"  Category: {details['category']}\n"
+            f"  Cost: {details['cost']}\n"
+            f"  Floor: {details['floor_number']}\n"
+            f"  Guest: {details['guest_name'] or 'None'}\n"
+            f"  Occupied: {'Yes' if details['occupied'] else 'No'}\n"
+        )
+        prettify_db.append(room_info)
+    return "\n".join(prettify_db)
+
+@app.get("/rooms", response_class=PlainTextResponse, status_code=status.HTTP_200_OK)
 async def get_rooms():
-    return room_db
+    return stringify_my_dict(room_db)
 
 @app.post("/rooms/create_room", status_code=status.HTTP_201_CREATED)
 async def create_room(
