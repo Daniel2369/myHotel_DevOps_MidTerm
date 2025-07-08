@@ -133,7 +133,7 @@ async def update_room(
 
     return {"message": "Room updated successfully", "room_id": room_id}
 
-@app.post("/rooms/check-in")
+@app.post("/rooms/check_in")
 async def check_in(
     guest_name: str = Form(...),
     category: str = Form(...)
@@ -143,9 +143,9 @@ async def check_in(
         if not room["occupied"] and room["category"] == category:
             room["guest_name"] = guest_name
             room["occupied"] = True
-        return {
-                "message": "Guest was successfully assigned to room",
-                "room_id": room_id
-            }
+            return {
+                    "message": "Guest was successfully assigned to room",
+                    "room_id": room_id
+                }
     
     return {"message": "No available room in that category."}
