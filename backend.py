@@ -70,3 +70,14 @@ async def create_room(
     }
     
     return {"message": "Room created successfully", "room_id": new_room_id}
+
+@app.post("/rooms/delete_room", status_code=status.HTTP_200_OK)
+async def delete_room(
+    room_id: int = Form(...)
+):
+    global room_db
+    if room_id in room_db:
+        room_db.pop(room_id)
+        return {"message": "Room deleted successfully", "room_id": room_id}
+    else:
+        return {"error": "Room not found", "room_id": room_id}
