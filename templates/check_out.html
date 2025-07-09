@@ -77,6 +77,11 @@
 <body>
     <div class="container">
         <h1>Check Out</h1>
+        {% if message %}
+            <p style="color: {{ 'red' if is_error else 'green' }}; font-weight: bold;">
+                {{ message }}
+            </p>
+        {% endif %}
         <form action="/rooms/check_out" method="post">
             <label for="room_id">Room ID:</label>
             <input type="number" id="room_id" name="room_id" required>

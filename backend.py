@@ -78,12 +78,12 @@ async def check_in_form(request: Request):
 async def check_in_form(request: Request):
     return templates.TemplateResponse("check_out.html", {"request": request})
 
-@app.get("/rooms", response_class=HTMLResponse, status_code=status.HTTP_200_OK)
+@app.get("/rooms", response_class=HTMLResponse)
 async def get_rooms(request: Request):
     return templates.TemplateResponse("rooms.html", {"request": request, "rooms": room_db})
 
 
-@app.post("/rooms/create_room", response_class=HTMLResponse, status_code=status.HTTP_201_CREATED)
+@app.post("/rooms/create_room", response_class=HTMLResponse)
 async def create_room(
     request: Request,
     category: str = Form(...),
@@ -107,7 +107,7 @@ async def create_room(
     "message": f"Room {new_room_id} created successfully!"
     })
 
-@app.post("/rooms/delete_room", response_class=HTMLResponse, status_code=status.HTTP_200_OK)
+@app.post("/rooms/delete_room", response_class=HTMLResponse)
 async def delete_room(
     request: Request,
     room_id: int = Form(...)
@@ -128,7 +128,7 @@ async def delete_room(
         "is_error": is_error
     })
 
-@app.post("/rooms/update_room", response_class=HTMLResponse, status_code=status.HTTP_200_OK)
+@app.post("/rooms/update_room", response_class=HTMLResponse)
 async def update_room(
     request: Request,
     room_id: int = Form(...),
@@ -184,8 +184,9 @@ async def check_in(
         "is_error": is_error
     })
 
-@app.post("/rooms/check_out")
+@app.post("/rooms/check_out", response_class=HTMLResponse)
 async def check_out(
+    request: Request,
     room_id: int = Form(...),
     guest_name: str = Form(...)
 ):
@@ -193,9 +194,15 @@ async def check_out(
         if room_db[room_id]["guest_name"] == guest_name:
             room_db[room_id]["guest_name"] = None
             room_db[room_id]["occupied"] = False
-            return {
-                "message": f"{guest_name} was checked_out from room",
-                "room_id": room_id
-            }
-    
-    return {"message": "Couldn't complete the check_out"}
+            
+            message = f"{guest_name} was checked_out from Room_ID = {room_id}."
+            is_error = False
+        else:
+            message = "Couldn't complete the check_out."
+            is_error = True
+
+    return templates.TemplateResponse("update_room.html", {
+        "request": request,
+        "message": message,
+        "is_error": is_error
+    })
