@@ -107,16 +107,26 @@ async def create_room(
     "message": f"Room {new_room_id} created successfully!"
     })
 
-@app.post("/rooms/delete_room", status_code=status.HTTP_200_OK)
+@app.post("/rooms/delete_room", response_class=HTMLResponse, status_code=status.HTTP_200_OK)
 async def delete_room(
+    request: Request,
     room_id: int = Form(...)
 ):
     global room_db
     if room_id in room_db:
         room_db.pop(room_id)
-        return {"message": "Room deleted successfully", "room_id": room_id}
+
+        message = f"Room deleted successfully, Room_ID = {room_id}"
+        is_error = False
     else:
-        return {"error": "Room not found", "room_id": room_id}
+        message = f"Room {room_id} not found."
+        is_error = True
+
+    return templates.TemplateResponse("update_room.html", {
+        "request": request,
+        "message": message,
+        "is_error": is_error
+    })
 
 @app.post("/rooms/update_room", response_class=HTMLResponse, status_code=status.HTTP_200_OK)
 async def update_room(
