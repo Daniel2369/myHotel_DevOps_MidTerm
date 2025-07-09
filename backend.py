@@ -122,7 +122,7 @@ async def delete_room(
         message = f"Room {room_id} not found."
         is_error = True
 
-    return templates.TemplateResponse("update_room.html", {
+    return templates.TemplateResponse("delete_room.html", {
         "request": request,
         "message": message,
         "is_error": is_error
@@ -178,7 +178,7 @@ async def check_in(
             message = f"No available room in that category."
             is_error = True
 
-    return templates.TemplateResponse("update_room.html", {
+    return templates.TemplateResponse("check_in.html", {
         "request": request,
         "message": message,
         "is_error": is_error
@@ -201,7 +201,7 @@ async def check_out(
             message = "Couldn't complete the check_out."
             is_error = True
 
-    return templates.TemplateResponse("update_room.html", {
+    return templates.TemplateResponse("check_out.html", {
         "request": request,
         "message": message,
         "is_error": is_error
