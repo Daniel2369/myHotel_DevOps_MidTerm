@@ -3,21 +3,38 @@
 <head>
     <title>All Rooms</title>
     <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
         table {
             border-collapse: collapse;
             width: 90%;
+            margin: auto;
+            font-size: 16px;
         }
+
         th, td {
             border: 1px solid black;
-            padding: 8px;
+            padding: 10px;
             text-align: center;
         }
+
         th {
             background-color: #f2f2f2;
+            cursor: pointer;
         }
+
         .occupied {
             background-color: #fdd;
         }
+
         .vacant {
             background-color: #dfd;
         }
@@ -25,27 +42,76 @@
 </head>
 <body>
     <h1>All Rooms</h1>
-    <table>
-        <tr>
-            <th>Room ID</th>
-            <th>Category</th>
-            <th>Cost</th>
-            <th>Floor</th>
-            <th>Guest</th>
-            <th>Occupied</th>
-        </tr>
-        {% for room_id, room in rooms.items() %}
-        <tr class="{{ 'occupied' if room.occupied else 'vacant' }}">
-            <td>{{ room_id }}</td>
-            <td>{{ room.category }}</td>
-            <td>{{ room.cost }}</td>
-            <td>{{ room.floor_number }}</td>
-            <td>{{ room.guest_name or '—' }}</td>
-            <td>{{ 'Yes' if room.occupied else 'No' }}</td>
-        </tr>
-        {% endfor %}
+    <table id="roomsTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable(0)">Room ID</th>
+                <th onclick="sortTable(1)">Category</th>
+                <th onclick="sortTable(2)">Cost</th>
+                <th onclick="sortTable(3)">Floor</th>
+                <th onclick="sortTable(4)">Guest</th>
+                <th onclick="sortTable(5)">Occupied</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for room_id, room in rooms.items() %}
+            <tr class="{{ 'occupied' if room.occupied else 'vacant' }}">
+                <td>{{ room_id }}</td>
+                <td>{{ room.category }}</td>
+                <td>{{ room.cost }}</td>
+                <td>{{ room.floor_number }}</td>
+                <td>{{ room.guest_name or '—' }}</td>
+                <td>{{ 'Yes' if room.occupied else 'No' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
+
     <br>
-    <a href="/">Back to Menu</a>
+    <div style="text-align: center;">
+        <a href="/">Back to Menu</a>
+    </div>
+
+    <script>
+        function sortTable(n) {
+            const table = document.getElementById("roomsTable");
+            let rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+            switching = true;
+            dir = "asc";
+
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+
+                    let xContent = x.textContent.trim();
+                    let yContent = y.textContent.trim();
+
+                    const xVal = isNaN(xContent) ? xContent.toLowerCase() : parseFloat(xContent);
+                    const yVal = isNaN(yContent) ? yContent.toLowerCase() : parseFloat(yContent);
+
+                    if ((dir === "asc" && xVal > yVal) || (dir === "desc" && xVal < yVal)) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                } else {
+                    if (switchcount === 0 && dir === "asc") {
+                        dir = "desc";
+                        switching = true;
+                    }
+                }
+            }
+        }
+    </script>
 </body>
 </html>
