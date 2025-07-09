@@ -174,6 +174,7 @@ async def check_in(
             
             message = f"Guest was successfully assigned to room, Room_ID= {room_id}."
             is_error = False
+            break
         else:
             message = f"No available room in that category."
             is_error = True
