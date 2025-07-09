@@ -77,6 +77,11 @@
 <body>
     <div class="container">
         <h2>Check In</h2>
+        {% if message %}
+            <p style="color: {{ 'red' if is_error else 'green' }}; font-weight: bold;">
+                {{ message }}
+            </p>
+        {% endif %}
         <form action="/rooms/check_in" method="post">
             <label>Guest Name:</label>
             <input type="text" name="guest_name" required>

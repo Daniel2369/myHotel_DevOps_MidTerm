@@ -160,8 +160,9 @@ async def update_room(
         "is_error": is_error
     })
 
-@app.post("/rooms/check_in")
+@app.post("/rooms/check_in", response_class=HTMLResponse)
 async def check_in(
+    request: Request,
     guest_name: str = Form(...),
     category: str = Form(...)
 ):
@@ -170,12 +171,18 @@ async def check_in(
         if not room["occupied"] and room["category"] == category:
             room["guest_name"] = guest_name
             room["occupied"] = True
-            return {
-                    "message": "Guest was successfully assigned to room",
-                    "room_id": room_id
-                }
-    
-    return {"message": "No available room in that category."}
+            
+            message = f"Guest was successfully assigned to room, Room_ID= {room_id}."
+            is_error = False
+        else:
+            message = f"No available room in that category."
+            is_error = True
+
+    return templates.TemplateResponse("update_room.html", {
+        "request": request,
+        "message": message,
+        "is_error": is_error
+    })
 
 @app.post("/rooms/check_out")
 async def check_out(
