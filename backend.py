@@ -83,8 +83,9 @@ async def get_rooms(request: Request):
     return templates.TemplateResponse("rooms.html", {"request": request, "rooms": room_db})
 
 
-@app.post("/rooms/create_room", status_code=status.HTTP_201_CREATED)
+@app.post("/rooms/create_room", response_class=HTMLResponse, status_code=status.HTTP_201_CREATED)
 async def create_room(
+    request: Request,
     category: str = Form(...),
     cost: int = Form(...),
     floor_number: int = Form(...),
@@ -101,7 +102,10 @@ async def create_room(
     "occupied": bool(guest_name)
     }
     
-    return {"message": "Room created successfully", "room_id": new_room_id}
+    return templates.TemplateResponse("create_room.html", {
+    "request": request,
+    "message": f"Room {new_room_id} created successfully!"
+    })
 
 @app.post("/rooms/delete_room", status_code=status.HTTP_200_OK)
 async def delete_room(

@@ -77,9 +77,17 @@
 <body>
     <div class="container">
         <h2>Create New Room</h2>
+        {% if message %}
+            <p style="color: green; font-weight: bold;">
+                {{ message }}
+            </p>
+        {% endif %}
         <form action="/rooms/create_room" method="post">
             <label>Category:</label>
-            <input type="text" name="category" required>
+            <select name="category">
+                <option value="Single">Single</option>
+                <option value="Double">Double</option>
+            </select>
 
             <label>Cost:</label>
             <input type="number" name="cost" required>
