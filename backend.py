@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request, Form # Backend app library fastapi
 from contextlib import asynccontextmanager
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates # Frontend library using html templates
-from starlette import status
+from fastapi.staticfiles import StaticFiles
 import random
 
 
@@ -50,6 +50,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan) # Loading the framework to a variable
 templates = Jinja2Templates(directory="templates") # Loading the menu.html file
 
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 '''
 Calling templates/*.html files
