@@ -47,7 +47,8 @@ Everything is handled through clean, interactive web forms and served via FastAP
 hotel-room-management/
 ├── app/
 │   ├── backend.py                 # Main FastAPI application
-│   ├── templates/              # HTML templates for all frontend pages
+│   ├── templates/                 # HTML templates for all frontend pages
+|   ├── static/                    # Banner image
 │   │   ├── menu.html
 │   │   ├── create_room.html
 │   │   ├── update_room.html
