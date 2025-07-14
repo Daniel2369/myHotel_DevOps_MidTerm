@@ -28,11 +28,12 @@ Room Availability : Display how many rooms are free or occupied, along with thei
 📂 Folder Structure
 Below is the folder structure for the project, represented as a tree:
 
+```text
 hotel-room-management/
 ├── python-app/ # Python application files
 │ ├── main.py # Main entry point for the CLI app
 │ └── functions.py # Reusable functions for room management
-
+```
 
 # Part 2 - Web Application
 
