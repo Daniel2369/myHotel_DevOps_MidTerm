@@ -109,7 +109,7 @@ hotel-room-management/
 - Run anywhere with one command
   
 ```bash
-docker build -t hotels:latest .
+docker buildx build --platform linux/amd64 -t hotels:latest .
 docker run -d --name hotels-container -p 8000:8000 hotels:latest
 # Inside the host machine run ip a and take the IPv4
 # Browse to http://<IPv4>:8000
@@ -235,38 +235,38 @@ Click Create Application
 
 Fill in:
 
-App name: my-eb-app
+* App name: my-eb-app
+* Domain name: Hotel
 
-Platform: Docker
+##Platform: Docker
+* Platform branch: Docker on Amazon Linux 2 (64bit)
 
-Platform branch: Docker on Amazon Linux 2 (64bit)
+##Under Application code:
+* Choose Upload your code
+* Upload the zipped my-app.zip
 
-Under Application code:
+##Preset
+* High availability
+Next
 
-Choose Upload your code
+## IAM
+* Choose the pre-built key and role.
+Next
 
-Upload the zipped my-app.zip
+## VPC
+* Choose the created VPC
+* Enable IP checkbox
+* Choose 2 private subnets
+Next
 
-Expand Configure more options:
+## EC2 security groups
+* Choose LB Security group & EC2 Security group.
 
-Select Load balanced environment
+### Load balancer 
+* Architecture: Choose AMD ( Note if you build the docker image localy without the --platform flag then choose ARM if you are using a MAC with M1,2,3 chip)
+* Number of instances
+* Instance type leave as be.
+* Choose public subnets.
+* Health check enhanced & True.
 
-Choose your custom VPC
 
-Choose:
-
-Public subnets for Load Balancer
-
-Private subnets for EC2 instances
-
-Click Create Environment
-
-⏳ Elastic Beanstalk will:
-
-Launch the ALB in public subnets
-
-Deploy EC2 instances in private subnets
-
-Auto scale across AZs
-
-Pull your Docker image from ECR
