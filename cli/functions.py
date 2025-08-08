@@ -1,10 +1,9 @@
 def setup_rooms(total_rooms=20):
     """
-    Creates a database (dictionary) of hotel rooms with default details.
-    total_rooms (int): The total number of rooms to initialize.
+    Creates a database (dictionary) of hotel rooms.
 
     Returns:
-        dict: A dictionary containing room numbers as keys and their details as values.
+        dict: A dictionary called room_db{} with the auto generated data.
     """
     room_db = {}
     for room_id in range(1, total_rooms + 1):
@@ -21,9 +20,8 @@ def setup_rooms(total_rooms=20):
 
 def show_rooms(room_db):
     """
-    Displays all hotel rooms along with their current status (free or occupied).
-     room_db (dict): The dictionary containing room data.
-
+    Displays all hotel rooms along with their current status (free or occupied)
+    By red color for occupied room and green for non.
     """
     print("\n--- Hotel Room Status ---")
     free_count = 0
@@ -49,8 +47,6 @@ def show_rooms(room_db):
 def add_new_room(room_db):
     """
     Adds a new room to the hotel database.
-     room_db (dict): The dictionary containing room data.
-
     """
     try:
         room_id = int(input("Enter the room number to add: "))
@@ -68,8 +64,6 @@ def add_new_room(room_db):
 def remove_existing_room(room_db):
     """
     Removes a room from the hotel database.
-    room_db (dict): The dictionary containing room data.
-
     """
     try:
         room_id = int(input("Enter the room number to remove: "))
@@ -85,8 +79,6 @@ def remove_existing_room(room_db):
 def update_room_details(room_db):
     """
     Updates the details of an existing room.
-     room_db (dict): The dictionary containing room data.
-
     """
     try:
         room_id = int(input("Enter the room number to update: "))
@@ -105,7 +97,6 @@ def update_room_details(room_db):
 def assign_guest_to_room(room_db):
     """
     Assigns a guest to a specific room if it is unoccupied.
-    room_db (dict): The dictionary containing room data.
     """
     try:
         room_id = int(input("Enter the room number to assign a guest: "))
@@ -125,8 +116,6 @@ def assign_guest_to_room(room_db):
 def check_out_guest(room_db):
     """
     Checks out a guest from a room, marking it as free.
-    room_db (dict): The dictionary containing room data.
-
     """
     try:
         room_id = int(input("Enter the room number for checkout: "))
@@ -146,8 +135,6 @@ def check_out_guest(room_db):
 def sort_rooms_by_status_and_number(room_db):
     """
     Sorts rooms by occupancy status (occupied first) and then by room number.
-    room_db (dict): The dictionary containing room data.
-
     """
     sorted_rooms = dict(
         sorted(
@@ -161,9 +148,6 @@ def sort_rooms_by_status_and_number(room_db):
 def display_room_availability(room_db):
     """
     Displays the availability of rooms, showing occupied and free rooms separately.
-    room_db (dict): The dictionary containing room data.
-
-
     """
     occupied_rooms = [str(room_id) for room_id, details in room_db.items() if details["guest_name"]]
     free_rooms = [str(room_id) for room_id, details in room_db.items() if not details["guest_name"]]
