@@ -251,16 +251,19 @@ Click Create Application
 
 ### Preset
 * High availability
+  
 Next
 
 ### IAM
 * Choose the pre-built key and role.
+  
 Next
 
 ### VPC
 * Choose the created VPC
 * Enable IP checkbox
 * Choose 2 private subnets
+  
 Next
 
 ### EC2 security groups
