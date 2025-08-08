@@ -1,5 +1,3 @@
-# functions.py
-
 def setup_rooms(total_rooms=20):
     """
     Creates a database (dictionary) of hotel rooms with default details.
