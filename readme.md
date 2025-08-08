@@ -109,7 +109,7 @@ hotel-room-management/
 - Run anywhere with one command
   
 ```bash
-docker buildx build --platform linux/amd64 -t hotels:latest .
+docker buildx build --platform linux/amd64 -t hotels:latest . (For MacOS)
 docker run -d --name hotels-container -p 8000:8000 hotels:latest
 # Inside the host machine run ip a and take the IPv4
 # Browse to http://<IPv4>:8000
@@ -160,6 +160,7 @@ Create a file named `Dockerrun.aws.json` in the root of your project and zip it:
   ]
 }
 ```
+Zip the the json file.
 
 ## 🌐 Step 2: Create a Secure VPC Architecture
 In the AWS Console, go to the VPC Dashboard and create:
@@ -193,6 +194,7 @@ Update private subnet route table to route 0.0.0.0/0 → NAT Gateway
 | ------------- | -------- | ---- | ----------- | ---------------------------- |
 | Inbound Rule  | HTTP     | 80   | `0.0.0.0/0` | Allow public web traffic     |
 | Outbound Rule | All      | All  | `0.0.0.0/0` | Allow ALB to forward traffic |
+
 🔧 Attach this SG to the Application Load Balancer.
 
 ✅ 2. EC2 Instance Security Group (SG-EC2)
@@ -200,7 +202,9 @@ Update private subnet route table to route 0.0.0.0/0 → NAT Gateway
 | ------------- | -------- | ---- | ----------- | --------------------------- |
 | Inbound Rule  | TCP      | 8000 | SG-ALB      | Allow traffic from ALB only |
 | Outbound Rule | All      | All  | `0.0.0.0/0` | Allow app to access ECR/etc |
+
 🔧 Attach this SG to the Elastic Beanstalk EC2 instances.
+
 Make sure the inbound rule uses the SG ID of the ALB, not 0.0.0.0/0, for internal-only access.
 
 ### ✅ 6. Configure Route Tables
@@ -233,33 +237,33 @@ Go to Elastic Beanstalk Console
 
 Click Create Application
 
-Fill in:
+### Fill in:
 
 * App name: my-eb-app
 * Domain name: Hotel
 
-##Platform: Docker
+### Platform: Docker
 * Platform branch: Docker on Amazon Linux 2 (64bit)
 
-##Under Application code:
+### Under Application code:
 * Choose Upload your code
 * Upload the zipped my-app.zip
 
-##Preset
+### Preset
 * High availability
 Next
 
-## IAM
+### IAM
 * Choose the pre-built key and role.
 Next
 
-## VPC
+### VPC
 * Choose the created VPC
 * Enable IP checkbox
 * Choose 2 private subnets
 Next
 
-## EC2 security groups
+### EC2 security groups
 * Choose LB Security group & EC2 Security group.
 
 ### Load balancer 
