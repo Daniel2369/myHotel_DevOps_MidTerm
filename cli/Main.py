@@ -1,21 +1,19 @@
-# main.py
-
-from functions import initialize_rooms
-from functions import display_rooms
-from functions import add_room
-from functions import remove_room
-from functions import edit_room
-from functions import assign_guest
-from functions import check_out
-from functions import sort_rooms_by_number
-from functions import check_availability
+from functions import setup_rooms
+from functions import show_rooms
+from functions import add_new_room
+from functions import remove_existing_room
+from functions import update_room_details
+from functions import assign_guest_to_room
+from functions import check_out_guest
+from functions import sort_rooms_by_status_and_number
+from functions import display_room_availability
 
 def main():
     """
      function to run the hotel room management system Main .
     """
     print("Welcome to the Hotel Room Management CRM System!")
-    rooms = initialize_rooms()
+    rooms = setup_rooms()
 
     while True:
         print("\n--- Menu ---")
@@ -32,21 +30,21 @@ def main():
         choice = input("Choose an option (1-9): ")
 
         if choice == '1':
-            display_rooms(rooms)
+            show_rooms(rooms)
         elif choice == '2':
-            add_room(rooms)
+            add_new_room(rooms)
         elif choice == '3':
-            remove_room(rooms)
+            remove_existing_room(rooms)
         elif choice == '4':
-            edit_room(rooms)
+            update_room_details(rooms)
         elif choice == '5':
-            assign_guest(rooms)
+            assign_guest_to_room(rooms)
         elif choice == '6':
-            check_out(rooms)
+            check_out_guest(rooms)
         elif choice == '7':
-            sort_rooms_by_number(rooms)
+            sort_rooms_by_status_and_number(rooms)
         elif choice == '8':
-            check_availability(rooms)
+            display_room_availability(rooms)
         elif choice == '9':
             print("no problem Bye")
             break
