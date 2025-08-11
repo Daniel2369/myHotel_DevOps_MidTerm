@@ -5,6 +5,7 @@ __pycache__/
 # Ignore Terraform state files and plan output
 terraform/main/terraform.tfstate
 terraform/main/terraform.tfstate.backup
+terraform/main/terraform.tfstate.*.backup
 terraform/main/plan
 
 # Ignore Terraform local .terraform directories
