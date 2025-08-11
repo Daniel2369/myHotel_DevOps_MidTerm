@@ -1,0 +1,27 @@
+# Ignore Python cache files
+__pycache__/
+*.pyc
+
+# Ignore Terraform state files and plan output
+terraform/main/terraform.tfstate
+terraform/main/terraform.tfstate.backup
+terraform/main/plan
+
+# Ignore Terraform local .terraform directories
+terraform/main/.terraform/
+
+# Ignore any .terraform directories in modules as well (if any)
+terraform/modules/**/.terraform/
+
+# Ignore environment files
+.env
+*.env
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore Docker image cache and logs
+*.log
+docker-compose.override.yml
+
