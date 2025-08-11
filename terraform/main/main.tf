@@ -1,3 +1,8 @@
+# vi ~/.aws/credentiols
+# Add the AWS ID,Secret and Session token
+# Edit the user_data under EC2 instance add them too inside the cat command.
+# Add incoming Security group rules for SSH and HTTP
+
 terraform {
   required_providers {
     aws = {
@@ -32,6 +37,7 @@ resource "aws_instance" "hotel_ec2" {
   ami           = "ami-0a7d80731ae1b2435"  # Update for your region, e.g., Amazon Linux 2 AMI
   instance_type = "t2.micro"
   key_name      = "vockey"
+  depends_on = [module.myHotel_APP_ECR.build_and_push_done]
 
   user_data = <<-EOF
     #!/bin/bash
@@ -59,17 +65,18 @@ resource "aws_instance" "hotel_ec2" {
     aws --version
 
     # Setup AWS credentials
-      mkdir -p /home/ubuntu/.aws
-      cat <<CREDENTIALS > /home/ubuntu/.aws/credentials
-  [default]
-  aws_access_key_id= <Add>
-  aws_secret_access_key= <Add>
-  aws_session_token= <Add>
-  region = us-east-1
-  CREDENTIALS
+    mkdir -p /home/ubuntu/.aws
 
-      chown -R ubuntu:ubuntu /home/ubuntu/.aws
-      chmod 600 /home/ubuntu/.aws/credentials
+    cat <<CREDENTIALS > /home/ubuntu/.aws/credentials
+    [default]
+    aws_access_key_id=
+    aws_secret_access_key=
+    aws_session_token=
+    region = us-east-1
+    CREDENTIALS
+
+    chown -R ubuntu:ubuntu /home/ubuntu/.aws
+    chmod 600 /home/ubuntu/.aws/credentials
 
     # Variables
     ECR_URI="${module.myHotel_APP_ECR.ecr_repo_url}"
@@ -79,7 +86,7 @@ resource "aws_instance" "hotel_ec2" {
     echo "ECR_REGISTRY = $ECR_REGISTRY"
 
     # Login to ECR
-    aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+    sudo -u ubuntu aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
 
     # Pull and run container
     docker pull ${module.myHotel_APP_ECR.ecr_repo_url}:latest
