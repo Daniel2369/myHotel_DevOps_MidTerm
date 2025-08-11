@@ -1,9 +1,4 @@
 # 🏨 Hotel Room Management System
-Welcome to the Hotel Room Management System ! This project is a Python-based application designed to manage hotel rooms, track occupancy, and provide room details. It also includes a web interface and containerization using Docker for easy deployment.
-
-# Web Application
-
-# 🏨 Hotel Room Management System
 
 A simple hotel room management system built with **FastAPI** and **Jinja2** templates, 
 Designed to demonstrate:
