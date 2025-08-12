@@ -3,7 +3,7 @@ output "ecr_url" {
 }
 
 
-output "ec2_public_ip" {
-  description = "Public IP address of the EC2 instance"
-  value       = aws_instance.hotel_ec2.public_ip
-}
+# output "ec2_public_ip" {
+#   description = "Public IP address of the EC2 instance"
+#   value       = aws_instance.hotel_ec2.public_ip
+# }
