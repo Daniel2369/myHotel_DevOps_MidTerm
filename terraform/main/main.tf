@@ -77,6 +77,81 @@ private_security_group = "private_security_group"
 
 }
 
+# ===============================================
+# Load balancer, Auto scaler and Target group
+# ===============================================
+module "alb_asg" {
+  source = "../modules/alb_asg"
+
+  alb_name          = "myhotel-alb"
+  lb_security_group = module.my_vpc.public_security_group_id
+  public_subnets    = module.my_vpc.public_subnet_ids
+  vpc_id            = module.my_vpc.vpc_id
+  ami_id            = "ami-0a7d80731ae1b2435"
+  instance_type     = "t3.small"
+  key_name          = "vockey"
+  desired_capacity  = 2
+  min_size          = 2
+  max_size          = 4
+
+  user_data = <<-EOF
+    #!/bin/bash
+    set -euxo pipefail  # exit on error, print commands, fail on pipe errors
+
+    LOG_FILE="/var/log/myhotel-init.log"
+    exec > >(tee -a "$LOG_FILE") 2>&1  # send stdout/stderr to both console and file
+
+    echo "=== Starting MyHotel EC2 bootstrap ==="
+
+    # Update and install dependencies
+    apt update -y
+    apt install -y docker.io unzip curl
+
+    echo "Docker installed."
+    docker --version
+
+    # Enable Docker
+    systemctl enable docker
+    systemctl start docker
+    echo "Docker service started."
+
+    # Install AWS CLI v2
+    apt install -y awscli
+    aws --version
+
+    # Setup AWS credentials
+    mkdir -p /home/ubuntu/.aws
+
+    cat <<CREDENTIALS > /home/ubuntu/.aws/credentials
+    [default]
+    aws_access_key_id=
+    aws_secret_access_key=
+    aws_session_token=
+    region = us-east-1
+    CREDENTIALS
+
+    chown -R ubuntu:ubuntu /home/ubuntu/.aws
+    chmod 600 /home/ubuntu/.aws/credentials
+
+    # Variables
+    ECR_URI="${module.myHotel_APP_ECR.ecr_repo_url}"
+    echo "ECR_URI = $ECR_URI"
+
+    ECR_REGISTRY=$(echo $ECR_URI | cut -d'/' -f1)
+    echo "ECR_REGISTRY = $ECR_REGISTRY"
+
+    # Login to ECR
+    sudo -u ubuntu aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+    # Pull and run container
+    docker pull ${module.myHotel_APP_ECR.ecr_repo_url}:latest
+    docker run -d -p 80:8000 ${module.myHotel_APP_ECR.ecr_repo_url}:latest
+
+    echo "=== MyHotel setup complete ==="
+  EOF
+}
+
+
 
 # Re-create EC2 instance for testing
 # terraform taint aws_instance.hotel_ec2
