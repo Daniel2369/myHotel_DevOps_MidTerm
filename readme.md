@@ -90,6 +90,8 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
 
 # AWS Deployment
 ## 🚀 Deploment with Terraform IaaC!!!
+![Alt text for the image](https://github.com/Daniel2369/myHotel_DevOps_MidTerm/blob/1c541f51c9a7638f0d2248eb6ae7a264160cbfb2/static/MyHotel%20AWS%20Deployment%20Diagram.drawio.png)
+
  ```bash
     1. cd terraform/main
     2. Inside the host shell run vi/nano ~/.aws/credentials paste inside:
