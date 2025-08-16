@@ -30,6 +30,7 @@ module "myHotel_APP_ECR" {
 
 module "my_vpc" {
   source = "../modules/vpc"
+  depends_on = [ module.myHotel_APP_ECR ]
 
   # ===============================================
   # VPC module
@@ -83,6 +84,7 @@ alg_id = module.my_vpc.public_security_group_id
 # ===============================================
 module "alb_asg" {
   source = "../modules/alb_asg"
+  depends_on = [ module.myHotel_APP_ECR, module.my_vpc ]
 
   alb_name          = "myhotel-alb"
   lb_security_group = module.my_vpc.public_security_group_id
@@ -100,11 +102,7 @@ module "alb_asg" {
   user_data = templatefile("${path.module}/ec2-userdata.sh", {
     ecr_repo_url = module.myHotel_APP_ECR.ecr_repo_url
   })
-  # user_data = templatefile("${path.module}/ec2-userdata.sh", {
-  # ecr_repo_url = module.myHotel_APP_ECR.ecr_repo_url
-  # })
 }
-
 
 # Re-create EC2 instance for testing
 # terraform taint aws_instance.hotel_ec2

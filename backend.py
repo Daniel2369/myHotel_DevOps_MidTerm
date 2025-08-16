@@ -5,10 +5,21 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates # Frontend library using html templates
 from fastapi.staticfiles import StaticFiles
 import random
+import requests
 
 
 # Declare an empty DB
 room_db:dict = {}
+
+# Get EC2 instance-id
+def get_instance_id():
+    try:
+        return requests.get(
+            "http://169.254.169.254/latest/meta-data/instance-id",
+            timeout=1
+        ).text
+    except:
+        return "unknown"
 
 
 def setup_rooms(total_rooms=20):
@@ -57,7 +68,8 @@ Calling templates/*.html files
 '''
 @app.get("/", response_class=HTMLResponse)
 async def menu(request: Request):
-    return templates.TemplateResponse("menu.html", {"request": request})
+    instance_id = get_instance_id()
+    return templates.TemplateResponse("menu.html", {"request": request, "instance_id": instance_id})
 
 @app.get("/form/create_room", response_class=HTMLResponse)
 async def create_room_form(request: Request):
