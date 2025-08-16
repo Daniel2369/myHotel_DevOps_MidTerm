@@ -11,9 +11,19 @@ resource "aws_lb" "this" {
 
 resource "aws_lb_target_group" "this" {
   name     = "${var.alb_name}-tg"
-  port     = 80
+  port     = 8000
   protocol = "HTTP"
+  target_type = "instance"
   vpc_id   = var.vpc_id
+
+  health_check {
+    path                = "/"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
 }
 
 resource "aws_lb_listener" "http" {
@@ -37,17 +47,29 @@ resource "aws_launch_template" "this" {
   key_name      = var.key_name
 
   user_data = base64encode(var.user_data)
+  update_default_version = true
+  vpc_security_group_ids = [
+    var.ec2_security_group_id,
+  ]
+
+  iam_instance_profile {
+    name = data.aws_iam_instance_profile.lab_profile.name
+  }
 }
+
+data "aws_iam_instance_profile" "lab_profile" {
+    name = "LabInstanceProfile"
+}
+
 
 resource "aws_autoscaling_group" "this" {
   desired_capacity    = var.desired_capacity
   max_size            = var.max_size
   min_size            = var.min_size
-  vpc_zone_identifier = var.public_subnets
+  vpc_zone_identifier = var.private_subnets
 
   launch_template {
     id      = aws_launch_template.this.id
-    version = "$Latest"
   }
 
   target_group_arns = [aws_lb_target_group.this.arn]

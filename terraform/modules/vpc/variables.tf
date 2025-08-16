@@ -43,3 +43,5 @@ variable "private_security_group" {
   type = string
   description = "security_group name"
 }
+
+variable "alg_id" {}

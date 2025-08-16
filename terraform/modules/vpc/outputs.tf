@@ -1,19 +1,24 @@
-output "my_vpc_id" {
-  description = "vpc id"
+output "vpc_id" {
+  description = "VPC ID"
   value       = aws_vpc.main_vpc.id
 }
 
-output "nat_eip_allocation_id" {
-  description = "nat_eip_allocation_id"
-  value = aws_eip.nat_eip.allocation_id
+output "public_subnet_ids" {
+  description = "IDs of all public subnets"
+  value       = aws_subnet.Public_subnets[*].id
 }
 
-output "Public_subnets_id" {
-  description = "Public_subnets_id"
-  value = aws_subnet.Public_subnets[*].id
+output "private_subnet_ids" {
+  description = "IDs of all private subnets"
+  value       = aws_subnet.Private_subnets[*].id
 }
 
-output "Private_subnets_id" {
-  description = "Private_subnets_id"
-  value = aws_subnet.Private_subnets[*].id
+output "public_security_group_id" {
+  description = "Public security group ID"
+  value       = aws_security_group.public_security_group.id
+}
+
+output "private_security_group_id" {
+    description = "Private security group ID"
+    value = aws_security_group.private_security_group.id
 }
