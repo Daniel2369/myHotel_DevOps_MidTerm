@@ -74,7 +74,8 @@ hotel-room-management/
 
 ---
 
-## 🐳 Running with Docker
+## 🐳 Running with Docker (Local deployment)
+      > ⚠️ **Important:** If you want fully automatec AWS deployment skip this part.
 
 ### 1. Build the Docker image
 - Easily containerized using Docker for consistent deployment
