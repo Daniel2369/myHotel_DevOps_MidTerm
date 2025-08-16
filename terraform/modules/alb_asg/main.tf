@@ -55,6 +55,13 @@ resource "aws_launch_template" "this" {
   iam_instance_profile {
     name = data.aws_iam_instance_profile.lab_profile.name
   }
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "${var.alb_name}-instance"
+    }
+  }
 }
 
 data "aws_iam_instance_profile" "lab_profile" {

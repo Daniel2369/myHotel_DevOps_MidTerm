@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . /app
 
 # Install dependencies
-RUN pip install fastapi[standard] uvicorn jinja2 python-multipart
+RUN pip install fastapi[standard] uvicorn jinja2 python-multipart requests
 
 # Expose port (optional but recommended)
 EXPOSE 8000
