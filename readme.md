@@ -2,10 +2,20 @@
 
 A simple hotel room management system built with **FastAPI** and **Jinja2** templates, 
 Designed to demonstrate:
-* FastAPI operations
+* ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+  Operations
 * room assignments 
 * guest check-in/check-out functionalities
 All in a clean HTML UI.
+
+## Deployment
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
+![Terraform](https://img.shields.io/badge/Terraform-844FBA?style=for-the-badge&logo=terraform&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)
+* AWS HA using:
+  * Application load balancer
+  * Auto scaler
+  * Launch template
 
 ---
 ## 🌟 Project Overview
@@ -49,6 +59,7 @@ hotel-room-management/
 │   ├── backend.py                 # Main FastAPI application
 │   ├── templates/                 # HTML templates for all frontend pages
 |   ├── static/                    # Banner image
+|   |── terraform/                 # IaaC using Terraform
 │   │   ├── menu.html
 │   │   ├── create_room.html
 │   │   ├── update_room.html
@@ -77,164 +88,17 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
 ```
 
 # AWS Deployment
-## 🚀 Deploy Docker Web App from ECR to Elastic Beanstalk with:
-* Private Subnets,
-* NAT Gateway
-* Load Balancer
-
-This guide explains how to deploy a Docker-based web application stored in **Amazon ECR** to **Elastic Beanstalk**, using a secure and scalable infrastructure:
-
-- EC2 instances in **private subnets**
-- Access to **Amazon ECR**
-- NAT Gateway for outbound traffic
-- Application Load Balancer for inbound HTTP traffic
-- Auto Scaling across 2 Availability Zones
-
----
-
-## 🧱 Prerequisites
-
-Before starting:
-
-- ✅ AWS account
-- ✅ Docker image pushed to [Amazon ECR](https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html)
-- ✅ AWS CLI installed
-- ✅ IAM permissions to manage VPC, EC2, ECR, Elastic Beanstalk, and IAM roles
-
----
-
-## 📦 Step 1: Prepare `Dockerrun.aws.json`
-
-Create a file named `Dockerrun.aws.json` in the root of your project and zip it:
-
-```json
-{
-  "AWSEBDockerrunVersion": "1",
-  "Image": {
-    "Name": "123456789012.dkr.ecr.us-east-1.amazonaws.com/my-service:latest", # ECR Repo/image
-    "Update": "true"
-  },
-  "Ports": [
-    {
-      "ContainerPort": 8000
-    }
-  ]
-}
-```
-Zip the the json file.
-
-## 🌐 Step 2: Create a Secure VPC Architecture
-In the AWS Console, go to the VPC Dashboard and create:
-
-### ✅ 1. VPC
-CIDR block: 10.0.0.0/16
-
-Enable DNS hostnames & DNS resolution
-
-### ✅ 2. Subnets
-2 Public Subnets (e.g., 10.0.1.0/24 in us-east-1a, 10.0.2.0/24 in us-east-1b)
-
-2 Private Subnets (e.g., 10.0.11.0/24, 10.0.12.0/24)
-
-Tag accordingly (e.g., Name: PublicSubnetA, PrivateSubnetB)
-
-### ✅ 3. Internet Gateway
-Attach to the VPC
-
-Update public subnet route table to route 0.0.0.0/0 → IGW
-
-### ✅ 4. NAT Gateway
-Allocate Elastic IP
-
-Create NAT Gateway in one public subnet using that Elastic IP
-
-Update private subnet route table to route 0.0.0.0/0 → NAT Gateway
-
-### ✅ 5. Create Security Groups
-| Rule Type     | Protocol | Port | Source      | Purpose                      |
-| ------------- | -------- | ---- | ----------- | ---------------------------- |
-| Inbound Rule  | HTTP     | 80   | `0.0.0.0/0` | Allow public web traffic     |
-| Outbound Rule | All      | All  | `0.0.0.0/0` | Allow ALB to forward traffic |
-
-🔧 Attach this SG to the Application Load Balancer.
-
-✅ 2. EC2 Instance Security Group (SG-EC2)
-| Rule Type     | Protocol | Port | Source      | Purpose                     |
-| ------------- | -------- | ---- | ----------- | --------------------------- |
-| Inbound Rule  | TCP      | 8000 | SG-ALB      | Allow traffic from ALB only |
-| Outbound Rule | All      | All  | `0.0.0.0/0` | Allow app to access ECR/etc |
-
-🔧 Attach this SG to the Elastic Beanstalk EC2 instances.
-
-Make sure the inbound rule uses the SG ID of the ALB, not 0.0.0.0/0, for internal-only access.
-
-### ✅ 6. Configure Route Tables
-Public Subnet Route Table
-Associated with: Public Subnets
-Contains:
-Destination      Target
-0.0.0.0/0        Internet Gateway (igw-xxxxxx)
-
-Used by: ALB and NAT Gateway
-
-Private Subnet Route Table
-Associated with: Private Subnets
-Contains:
-Destination      Target
-0.0.0.0/0        NAT Gateway (nat-xxxxxx)
-Used by: EC2 instances (Elastic Beanstalk app servers)
-
-## 🔐 Step 3: Set Up IAM Role for EC2
-Go to IAM > Roles
-
-Locate the EC2 instance profile used by Elastic Beanstalk (e.g., aws-elasticbeanstalk-ec2-role)
-
-Attach the policy: AmazonEC2ContainerRegistryReadOnly
-
-This allows EC2 to pull your image from ECR.
-
-## 🏗 Step 4: Deploy to Elastic Beanstalk
-Go to Elastic Beanstalk Console
-
-Click Create Application
-
-### Fill in:
-
-* App name: my-eb-app
-* Domain name: Hotel
-
-### Platform: Docker
-* Platform branch: Docker on Amazon Linux 2 (64bit)
-
-### Under Application code:
-* Choose Upload your code
-* Upload the zipped my-app.zip
-
-### Preset
-* High availability
-  
-Next
-
-### IAM
-* Choose the pre-built key and role.
-  
-Next
-
-### VPC
-* Choose the created VPC
-* Enable IP checkbox
-* Choose 2 private subnets
-  
-Next
-
-### EC2 security groups
-* Choose LB Security group & EC2 Security group.
-
-### Load balancer 
-* Architecture: Choose AMD ( Note if you build the docker image localy without the --platform flag then choose ARM if you are using a MAC with M1,2,3 chip)
-* Number of instances
-* Instance type leave as be.
-* Choose public subnets.
-* Health check enhanced & True.
-
-
+## 🚀 Deploment with Terraform IaaC!!!
+1. ```bash
+    1. cd terraform/main
+    2. Inside the host shell run vi/nano ~/.aws/credentials paste inside:
+       * ACCESS_KEY_ID
+       * SECRET_KEY
+       * SESSION_TOKEN
+    3.  Inside the .sh file under CREDENTIALS insert the same as step 2.
+    3. terarform init
+    4. terraform plan -out plan
+    5. terraform apply plan
+       # Wait for a few minutes.
+    6. Copy the Load balancer domain and paste in the host browser.
+   ```
