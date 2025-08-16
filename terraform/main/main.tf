@@ -74,6 +74,7 @@ public_security_group = "public_security_group"
 
 # Private Security group
 private_security_group = "private_security_group"
+alg_id = module.my_vpc.public_security_group_id
 
 }
 
@@ -85,7 +86,9 @@ module "alb_asg" {
 
   alb_name          = "myhotel-alb"
   lb_security_group = module.my_vpc.public_security_group_id
+  ec2_security_group_id = module.my_vpc.private_security_group_id
   public_subnets    = module.my_vpc.public_subnet_ids
+  private_subnets    = module.my_vpc.private_subnet_ids
   vpc_id            = module.my_vpc.vpc_id
   ami_id            = "ami-0a7d80731ae1b2435"
   instance_type     = "t3.small"
@@ -95,8 +98,11 @@ module "alb_asg" {
   max_size          = 4
 
   user_data = templatefile("${path.module}/ec2-userdata.sh", {
-  ecr_repo_url = module.myHotel_APP_ECR.ecr_repo_url
+    ecr_repo_url = module.myHotel_APP_ECR.ecr_repo_url
   })
+  # user_data = templatefile("${path.module}/ec2-userdata.sh", {
+  # ecr_repo_url = module.myHotel_APP_ECR.ecr_repo_url
+  # })
 }
 
 
