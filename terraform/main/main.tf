@@ -99,10 +99,12 @@ module "alb_asg" {
   min_size          = 2
   max_size          = 4
 
-  user_data = templatefile("${path.module}/ec2-userdata.sh", {
-    ecr_repo_url = module.myHotel_APP_ECR.ecr_repo_url
-  })
+  user_data = ""
 }
+ # user_data = templatefile("${path.module}/ec2-userdata.sh", {
+ #  ecr_repo_url = module.myHotel_APP_ECR.ecr_repo_url
+ #  })
+ #}
 
 # Re-create EC2 instance for testing
 # terraform taint aws_instance.hotel_ec2
@@ -111,10 +113,75 @@ module "alb_asg" {
 # ===============================================
 # Ansible machine on public subnet
 # ===============================================
+resource "aws_security_group" "ansible_server_security_group" {
+  name        = "ansible_server_security_group"
+  vpc_id      = module.my_vpc.vpc_id
+
+  tags = {
+    Name = "ansible_server_security_group"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_ssh" {
+  security_group_id = aws_security_group.ansible_server_security_group.id
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = 22
+  ip_protocol       = "tcp"
+  to_port           = 22
+}
+
+
+resource "aws_vpc_security_group_egress_rule" "allow_outbound_all1" {
+  security_group_id = aws_security_group.ansible_server_security_group.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1" # semantically equivalent to all ports
+}
+
 resource "aws_instance" "hotel_ec2" {
-  ami           = "ami-0a7d80731ae1b2435"  # Update for your region, e.g., Amazon Linux 2 AMI
+  ami           = "ami-0bbdd8c17ed981ef9"
   instance_type = "t3.small"
   key_name      = "vockey"
-  subnet_id     = module.vpc.public_subnet_id_0
-  vpc_security_group_ids  = [module.my_vpc.public_security_group_id]
+  subnet_id     = module.my_vpc.public_subnet_id_0
+  vpc_security_group_ids  = [aws_security_group.ansible_server_security_group.id]
+  tags = {
+    Name = "ansible-server"
+  }
+  user_data = file("${path.module}/ansible-server.sh")
 }
+
+# =========================================
+# Execution steps
+# =========================================
+# terraform init
+# terraform plan -out plan
+# terraform apply plan
+# terraform output -json > tf_outputs.json
+# jq 'map_values(.value)' tf_outputs.json > ansible_vars.json
+# cat ansible_vars.json
+# Add     aws_access_key_id: ""
+          #aws_secret_access_key: ""
+          #aws_session_token: ""
+# To ansible_vars.json
+# Run push_ecr_image.sh
+# docker build -t myHotel:latest .
+# Edit /main/docker_image_push.sh Add:
+#      ECR_URL, local docker image name
+# Download pem file and move it to /terraform/main
+# chmod 400 labuser.pem
+
+
+# Take private vm's ip address from the console - I'm here
+
+# Login to the ansible-server using SSH or SSM, install Ansible check SSH connectivity to private VM's
+
+# Configure inventory.ini
+# [myhotel_ec2]
+# ec2-instance-1 ansible_host=<add private ip 1> ansible_user=ubuntu ansible_ssh_private_key_file=/path/to/labsuser.pem
+# ec2-instance-2 ansible_host=<add private ip 2> ansible_user=ubuntu ansible_ssh_private_key_file=/path/to/labsuser.pem
+
+# Test ssh connectivity again
+# SCP inventory.ini and pem files from local to the server and the playbook
+# Run the playbook
+
+# Check the target group health
+# Test application - if unhealthy check private vm's docker container
