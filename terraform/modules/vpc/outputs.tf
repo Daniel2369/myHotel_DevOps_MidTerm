@@ -8,6 +8,11 @@ output "public_subnet_ids" {
   value       = aws_subnet.Public_subnets[*].id
 }
 
+output "public_subnet_id_0" {
+  value = aws_subnet.Public_subnets[0].id
+}
+
+
 output "private_subnet_ids" {
   description = "IDs of all private subnets"
   value       = aws_subnet.Private_subnets[*].id
