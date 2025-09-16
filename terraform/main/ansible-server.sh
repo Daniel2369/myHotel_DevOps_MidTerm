@@ -52,3 +52,4 @@ chown ubuntu:ubuntu /home/ubuntu/.ssh
 echo "=== Ansible and Docker installation complete ==="
 ansible --version
 docker --version
+

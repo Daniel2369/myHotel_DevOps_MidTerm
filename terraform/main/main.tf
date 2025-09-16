@@ -122,6 +122,7 @@ resource "aws_security_group" "ansible_server_security_group" {
   }
 }
 
+
 resource "aws_vpc_security_group_ingress_rule" "allow_ssh" {
   security_group_id = aws_security_group.ansible_server_security_group.id
   cidr_ipv4         = "0.0.0.0/0"
@@ -174,14 +175,14 @@ resource "aws_instance" "hotel_ec2" {
 
 # Login to the ansible-server using SSH or SSM, install Ansible check SSH connectivity to private VM's
 
-# Configure inventory.ini
-# [myhotel_ec2]
-# ec2-instance-1 ansible_host=<add private ip 1> ansible_user=ubuntu ansible_ssh_private_key_file=/path/to/labsuser.pem
-# ec2-instance-2 ansible_host=<add private ip 2> ansible_user=ubuntu ansible_ssh_private_key_file=/path/to/labsuser.pem
-
 # Test ssh connectivity again
-# SCP inventory.ini and pem files from local to the server and the playbook
+# Run scp_data.sh to transfer files
+# Test connection ansible myhotel_ec2 -i /etc/ansible/inventory.ini -m ping
+
+# TODO // Add to private security group allow ssh from IP range of public subnet
+
 # Run the playbook
+# ansible-playbook -i inventory.ini your_playbook.yml --extra-vars "@ansible_vars.json"
 
 # Check the target group health
 # Test application - if unhealthy check private vm's docker container

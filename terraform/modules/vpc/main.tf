@@ -133,6 +133,7 @@ resource "aws_security_group" "public_security_group" {
   }
 }
 
+
 resource "aws_vpc_security_group_ingress_rule" "allow_http" {
   security_group_id = aws_security_group.public_security_group.id
   cidr_ipv4         = "0.0.0.0/0"
@@ -172,6 +173,14 @@ resource "aws_vpc_security_group_ingress_rule" "allow_ssh" {
   from_port         = 22
   ip_protocol       = "tcp"
   to_port           = 22
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_ssh_from_ansible_server" {
+  security_group_id = aws_security_group.private_security_group.id
+  cidr_ipv4         = "10.0.1.0/24"
+  from_port   = 22
+  to_port     = 22
+  ip_protocol = "tcp"
 }
 
 resource "aws_vpc_security_group_egress_rule" "allow_outbound_all2" {
