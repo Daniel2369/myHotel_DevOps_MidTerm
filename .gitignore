@@ -34,3 +34,11 @@ docker-compose.override.yml
 *.tfstate
 *.tfstate.*
 .terraform.lock.hcl
+# Ignore local Terraform working directories
+.terraform/
+**/.terraform/
+
+# Terraform state & lock files
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
