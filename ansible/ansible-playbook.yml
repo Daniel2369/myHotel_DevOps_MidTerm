@@ -1,7 +1,7 @@
 ---
 - name: Bootstrap MyHotel EC2 instance
   hosts: all
-  become: yes
+  become: yes # test
 
   vars_files:
     - ansible_vars.json   # path to your JSON file on the controller
