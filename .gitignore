@@ -26,3 +26,11 @@ Thumbs.db
 *.log
 docker-compose.override.yml
 
+# Ignore local Terraform working directories
+.terraform/
+**/.terraform/
+
+# Terraform state & lock files
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
