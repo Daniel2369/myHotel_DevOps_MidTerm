@@ -2,10 +2,11 @@
 - name: Bootstrap MyHotel EC2 instance
   hosts: all
   become: yes
+
+  vars_files:
+    - ansible_vars.json   # path to your JSON file on the controller
+
   vars:
-    aws_access_key_id: ""
-    aws_secret_access_key: ""
-    aws_session_token: ""
     region: "us-east-1"
     ecr_repo_url: "{{ ecr_url }}"
     ansible_user: ubuntu
@@ -45,29 +46,44 @@
 
     - name: Add ubuntu user to docker group
       ansible.builtin.user:
-        name: "{{ ansible_user }}"
+        name: "ubuntu"
         groups: docker
         append: yes
 
     - name: Create .aws directory for ubuntu user
       ansible.builtin.file:
-        path: "/home/{{ ansible_user }}/.aws"
+        path: "/home/ubuntu/.aws"
         state: directory
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "ubuntu"
+        group: "ubuntu"
         mode: '0700'
 
     - name: Create AWS credentials file
       ansible.builtin.copy:
-        dest: "/home/{{ ansible_user }}/.aws/credentials"
+        dest: "/home/ubuntu/.aws/credentials"
         content: |
           [default]
           aws_access_key_id={{ aws_access_key_id }}
           aws_secret_access_key={{ aws_secret_access_key }}
           aws_session_token={{ aws_session_token }}
-          region = {{ region }}
-        owner: "{{ ansible_user }}"
-        group: "{{ ansible_user }}"
+        owner: "ubuntu"
+        group: "ubuntu"
+        mode: '0600'
+
+    - name: Also copy credentials to /root for become_user processes
+      ansible.builtin.file:
+        path: "/root/.aws"
+        state: directory
+        owner: "root"
+        group: "root"
+        mode: '0700'
+
+    - name: Copy credentials for root
+      ansible.builtin.copy:
+        src: "/home/ubuntu/.aws/credentials"
+        dest: "/root/.aws/credentials"
+        owner: "root"
+        group: "root"
         mode: '0600'
 
     - name: Set ECR registry URL fact
@@ -78,14 +94,15 @@
       ansible.builtin.shell: |
         aws ecr get-login-password --region {{ region }} | \
         docker login --username AWS --password-stdin {{ ecr_registry }}
-      become_user: "{{ ansible_user }}"
+      become_user: "ubuntu"
       environment:
-        AWS_SHARED_CREDENTIALS_FILE: "/home/{{ ansible_user }}/.aws/credentials"
+        AWS_SHARED_CREDENTIALS_FILE: "/home/ubuntu/.aws/credentials"
 
     - name: Pull Docker image from ECR
       community.docker.docker_image:
         name: "{{ ecr_repo_url }}:latest"
         source: pull
+      become_user: "ubuntu"
 
     - name: Run Docker container
       community.docker.docker_container:
@@ -95,6 +112,7 @@
         restart_policy: always
         published_ports:
           - "8000:8000"
+      become_user: "ubuntu"
 
     - name: Enable and start SSM agent (snap)
       ansible.builtin.shell: systemctl enable --now snap.amazon-ssm-agent.amazon-ssm-agent.service || true

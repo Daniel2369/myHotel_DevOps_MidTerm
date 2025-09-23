@@ -1,8 +1,8 @@
 {
-  "alb_asg_url": "myhotel-alb-1263040612.us-east-1.elb.amazonaws.com",
-  "ec2_public_ip": "54.226.134.186",
+  "alb_asg_url": "myhotel-alb-1848717136.us-east-1.elb.amazonaws.com",
+  "ec2_public_ip": "54.80.210.81",
   "ecr_url": "623866174656.dkr.ecr.us-east-1.amazonaws.com/myhotel",
-  "aws_access_key_id": "",
-  "aws_secret_access_key": "",
-  "aws_session_token": ""
+  "aws_access_key_id": "ASIAZCQKSLTALSIS5537",
+  "aws_secret_access_key": "UVwHKQ1/Sqwwfpi6atapoXRsRhv+/p3IF7JGrWmQ",
+  "aws_session_token": "IQoJb3JpZ2luX2VjELf//////////wEaCXVzLXdlc3QtMiJHMEUCIQDIQFYHNXdRORCKanibmvY7t73veuCuyKG3GGjQQuNwlQIgXu8gOUnUZjORNt5hrjpfACzz7984Ykk9D4JCakySbmwqswIIQBABGgw2MjM4NjYxNzQ2NTYiDC+7PIH3y+VmL5ZtrSqQAuPisgvxyDG1rT2AH+A6K+8KQ6ORZ2TUPb8r14jtZnUUDCk8/uAHu37DEwtTs//N3ebE8ENK3DLUDe1hvbQaDCkCQtbQyG8vFmD6n/PktcMavbuGmdV1EaFdd30YL8mm6k2jPOL7n0q3RG0z4xFZNMVok23ztANinm93Y1ODcPzEEDLF8egpPMwqgxkQzlwegTjwzeraFVl7XBiNMdxREGl4kN4bdLW8nDiM2QyeROF6pfu8u4yvqJNDd2scxE17vsNoqWVRU/ScFE9qUu/SdSEQUAifPPXJeNi4xZPYKwlJBEdYinnkp35Fu3yYizcb565G/FPMr7puOqJ7bpw1mdUm7eZJxMP/q9EuaGMWfM5FMKz5yMYGOp0BsR+ntFnohGs8UMwe2/EYQBOCcUG/H8QrZOq+avRDU0rI1AWdye9hPTX2Wea+UEgbbcbE60xGABXHyPj7qZg7XO6k8Trok2fdsrIICl1+ccoWg2R6nddFWnqW0ineJ8XuwCLGsY6JHDjQUe4dVt5moN13iL8zsiN4UpRlWudF/keCHdgh2LztnGenlJNH/aBA3EkBn2blDPjPqOBD8g=="
 }

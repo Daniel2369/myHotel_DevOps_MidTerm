@@ -75,7 +75,6 @@ public_security_group = "public_security_group"
 
 # Private Security group
 private_security_group = "private_security_group"
-alg_id = module.my_vpc.public_security_group_id
 
 }
 
@@ -122,6 +121,15 @@ resource "aws_security_group" "ansible_server_security_group" {
   }
 }
 
+# Allow ALB security group to reach private instances on port 8000
+resource "aws_security_group_rule" "alb_to_instances" {
+  type                     = "ingress"
+  from_port                = 8000
+  to_port                  = 8000
+  protocol                 = "tcp"
+  security_group_id        = module.my_vpc.private_security_group_id
+  source_security_group_id = module.my_vpc.public_security_group_id
+}
 
 resource "aws_vpc_security_group_ingress_rule" "allow_ssh" {
   security_group_id = aws_security_group.ansible_server_security_group.id
@@ -150,6 +158,7 @@ resource "aws_instance" "hotel_ec2" {
   user_data = file("${path.module}/ansible-server.sh")
 }
 
+
 # =========================================
 # Execution steps
 # =========================================
@@ -171,18 +180,17 @@ resource "aws_instance" "hotel_ec2" {
 # chmod 400 labuser.pem
 
 
-# Take private vm's ip address from the console - I'm here
+# Take private vm's ip address from the console
 
 # Login to the ansible-server using SSH or SSM, install Ansible check SSH connectivity to private VM's
 
 # Test ssh connectivity again
 # Run scp_data.sh to transfer files
+# Connect manually first
 # Test connection ansible myhotel_ec2 -i /etc/ansible/inventory.ini -m ping
 
-# TODO // Add to private security group allow ssh from IP range of public subnet
-
-# Run the playbook
-# ansible-playbook -i inventory.ini your_playbook.yml --extra-vars "@ansible_vars.json"
+# Run the playbook - I'm here
+# ansible-playbook -i inventory.ini ansible-playbook.yml --extra-vars "@ansible_vars.json"
 
 # Check the target group health
 # Test application - if unhealthy check private vm's docker container

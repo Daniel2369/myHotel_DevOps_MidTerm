@@ -159,12 +159,29 @@ resource "aws_security_group" "private_security_group" {
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "allow_port_80" {
+resource "aws_vpc_security_group_ingress_rule" "allow_port_8000" {
   security_group_id = aws_security_group.private_security_group.id
-  referenced_security_group_id         = var.alg_id
+  # Allow traffic from the public (ALB) security group to the private instances on port 8000
+  referenced_security_group_id         = aws_security_group.public_security_group.id
   from_port         = 8000
   ip_protocol       = "tcp"
   to_port           = 8000
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_port_80" {
+  security_group_id = aws_security_group.private_security_group.id
+  cidr_ipv4 = "0.0.0.0/0"
+  from_port         = 80
+  ip_protocol       = "tcp"
+  to_port           = 80
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_port_443" {
+  security_group_id = aws_security_group.private_security_group.id
+  cidr_ipv4 = "0.0.0.0/0"
+  from_port         = 443
+  ip_protocol       = "tcp"
+  to_port           = 443
 }
 
 resource "aws_vpc_security_group_ingress_rule" "allow_ssh" {
