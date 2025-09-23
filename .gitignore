@@ -13,6 +13,7 @@ terraform/main/.terraform/
 
 # Ignore any .terraform directories in modules as well (if any)
 terraform/modules/**/.terraform/
+terraform/dynamoDB/.terraform/
 
 # Ignore environment files
 .env
