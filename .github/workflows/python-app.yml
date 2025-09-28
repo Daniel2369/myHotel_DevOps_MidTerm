@@ -24,6 +24,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: ${{ secrets.AWS_REGION }}
+            
+      - name: Ensure ECR repository exists
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+        run: |
+          aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --region $AWS_REGION || \
+          aws ecr create-repository --repository-name "$ECR_REPOSITORY" --region $AWS_REGION
 
       - name: Log in to Amazon ECR
         id: login-ecr
