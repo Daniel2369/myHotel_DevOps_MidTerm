@@ -40,8 +40,8 @@ jobs:
           IMAGE_TAG=latest
           IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-          echo "Building Docker image..."
-          docker build -t $IMAGE_URI ./app
+          echo "Building Docker image"
+          docker build -t $IMAGE_URI .
 
           echo "Pushing image to ECR..."
           docker push $IMAGE_URI
