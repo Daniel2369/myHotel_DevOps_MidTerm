@@ -7,7 +7,7 @@ WORKDIR /app
 COPY . /app
 
 # Install dependencies
-RUN pip install fastapi[standard] uvicorn jinja2 python-multipart requests
+RUN pip install fastapi[standard] uvicorn jinja2 python-multipart requests pytest
 
 # Run tests with pytest
 RUN pytest
