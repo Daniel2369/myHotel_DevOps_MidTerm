@@ -9,6 +9,9 @@ COPY . /app
 # Install dependencies
 RUN pip install fastapi[standard] uvicorn jinja2 python-multipart requests
 
+# Run tests with pytest
+RUN pytest
+
 # Expose port (optional but recommended)
 EXPOSE 8000
 

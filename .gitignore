@@ -7,6 +7,7 @@ terraform/main/terraform.tfstate
 terraform/main/terraform.tfstate.backup
 terraform/main/terraform.tfstate.*.backup
 terraform/main/plan
+terraform/main/labsuser.pem
 
 # Ignore Terraform local .terraform directories
 terraform/main/.terraform/

@@ -3,6 +3,6 @@ output "ecr_repo_url" {
   value       = aws_ecr_repository.myHotel.repository_url
 }
 
-output "build_and_push_done" {
-  value = null_resource.docker_build_and_push.id
-}
+# output "build_and_push_done" {
+#   value = null_resource.docker_build_and_push.id
+# }
