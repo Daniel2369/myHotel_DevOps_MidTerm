@@ -198,13 +198,12 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        b. cd ../
        c. terraform output copy lb and ec2 ip and paste into the json file created inside /scripts
        d. then edit ansible_vars.json to add AWS credentials (or put them on the Ansible host).
-    8. Copy files to the Ansible server (example): - Download the key from the console and set
+    8. Copy files to the Ansible server
        Note: Copy the certificate from the AWS lab's UI and copy it into the project directory .pem file and save
-       a. mv ~/Downloads/labsuer.pem
-       b. chmod 400 labsuser.pem
-       c. ./scripts/scp_data.sh $(terraform output -raw ec2_public_ip)
+       a. chmod 400 labsuser.pem
+       b. ./scripts/scp_data.sh $(terraform output -raw ec2_public_ip)
     9. Ansible part:
-       ssh -i /path/to/labsuser.pem ubuntu@<ANSIBLE_IP>
+       ssh -i /terraform/labsuser.pem ubuntu@<ANSIBLE_IP> #run terraform output to see the public ip
 
         Inside the server:
         sudo su - # switch to root user
