@@ -18,19 +18,8 @@ provider "aws" {
 }
 
 
-module "myHotel_APP_ECR" {
-  source         = "../modules/ecr"
-  region         = var.region
-  repository_name = "myhotel"
-  image_name     = "myhotel"
-  tag            = "latest"
-  docker_context = "../../"
-}
-
-
 module "my_vpc" {
   source = "../modules/vpc"
-  depends_on = [ module.myHotel_APP_ECR ]
 
   # ===============================================
   # VPC module

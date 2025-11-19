@@ -188,6 +188,7 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
                   Values will be in the moodle.
                   Validation: echo $DOCKERHUB_USERNAME
                               echo $DOCKERHUB_TOKEN
+                  Run terraform/main/docker_push_script.sh
        a. cd /myHotel_DevOps_MidTerm/terraform/main
        b. terraform init -reconfigure
        c. terraform plan -out plan
