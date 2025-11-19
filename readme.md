@@ -182,12 +182,16 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        a. Validate the following output is printed: DynamoDB table 'terraform-locks' already exists.
                                                     Terraform backend resources are ready.
     6. Apply Terraform infra:
+       Pre-setup: Configure in the ternminal the following variables:
+                  export DOCKERHUB_USERNAME="your_username"
+                  export DOCKERHUB_TOKEN="your_token"
+                  Values will be in the moodle.
+                  Validation: echo $DOCKERHUB_USERNAME
+                              echo $DOCKERHUB_TOKEN
        a. cd /myHotel_DevOps_MidTerm/terraform/main
        b. terraform init -reconfigure
        c. terraform plan -out plan
        d. terraform apply plan
-      # If something about ECR fails - update variable ECR_REPO_URL var inside
-      # /scripts/docker_image_push.sh
     7. Generate ansible_vars.json (and fill credentials securely): 
        a. ./scripts/generate-ansible-vars.sh
           # then edit ansible_vars.json to add AWS credentials (or put them on the Ansible host)
