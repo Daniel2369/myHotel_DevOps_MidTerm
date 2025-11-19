@@ -167,6 +167,10 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
 
  ```bash
     1. Create S3 bucket manually in AWS console = devops2025-technion-finalcourse-dberliant-bucket
+      * If the bucket is taken change the name
+      * If you have changed the bucket name - change the name inside the following files:
+        * terraform/main/backend.tf
+        * terraform/main/setup-tf-backend.sh
     2. Create the Docker image locally - docker build -t myHotel:latest .
     3. Copy AWS creds inside ~/.aws/credentials
     4. Create the DynamoDB lock table (bootstrap):
@@ -174,7 +178,7 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        b. terraform init
        c. terraform apply -auto-approve
        This creates terraform-locks. Confirm the output shows the table name.
-    5. Run /Terraform/main/scripts/setup-tf-backend.sh
+    5. Run /Terraform/main/setup-tf-backend.sh
        a. Validate the following output is printed: DynamoDB table 'terraform-locks' already exists.
                                                     Terraform backend resources are ready.
     6. Apply Terraform infra:

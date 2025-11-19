@@ -2,7 +2,7 @@
 
 # === CONFIGURATION ===
 REGION="us-east-1"
-S3_BUCKET="devops2025-technion-finalcourse-dberliant-bucket"
+S3_BUCKET="devops2025-technion-finalcourse-dberliant-bucket1"
 DYNAMODB_TABLE="terraform-locks"
 
 # === Create S3 Bucket (if it doesn't exist) ===

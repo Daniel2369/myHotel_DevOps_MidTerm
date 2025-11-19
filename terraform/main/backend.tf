@@ -16,7 +16,7 @@
 */
 
 data "aws_s3_bucket" "backend" {
-  bucket = "devops2025-technion-finalcourse-dberliant-bucket"
+  bucket = "devops2025-technion-finalcourse-dberliant-bucket1"
 }
 
 /* The DynamoDB lock table is created outside of this configuration using
@@ -44,7 +44,7 @@ data "aws_dynamodb_table" "terraform_lock" {
 
 terraform {
   backend "s3" {
-    bucket = "devops2025-technion-finalcourse-dberliant-bucket"
+    bucket = "devops2025-technion-finalcourse-dberliant-bucket1"
     key = "global/s3/terraform.tfstate"
     region = "us-east-1"
   dynamodb_table = "terraform-locks"
