@@ -197,6 +197,7 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        a. ./scripts/generate-ansible-vars.sh
           # then edit ansible_vars.json to add AWS credentials (or put them on the Ansible host)
     8. Copy files to the Ansible server (example): - Download the key from the console and set
+       Note: Copy the certificate from the AWS lab's UI and copy it into the project directory .pem file and save
        a. mv ~/Downloads/labsuer.pem
        b. chmod 400 labsuser.pem
        c. ./scripts/scp_data.sh $(terraform output -raw ec2_public_ip)
