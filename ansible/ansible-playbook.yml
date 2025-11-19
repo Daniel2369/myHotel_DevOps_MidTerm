@@ -8,7 +8,9 @@
 
   vars:
     region: "us-east-1"
-    ecr_repo_url: "{{ ecr_url }}"
+    dockerhub_image: "beri1/devops-final-project:latest"
+    dockerhub_username: "{{ dockerhub_user | default('') }}"
+    dockerhub_token: "{{ dockerhub_token | default('') }}"
     ansible_user: ubuntu
 
   tasks:
@@ -86,28 +88,25 @@
         group: "root"
         mode: '0600'
 
-    - name: Set ECR registry URL fact
-      ansible.builtin.set_fact:
-        ecr_registry: "{{ ecr_repo_url.split('/')[0] }}"
-
-    - name: Login to ECR
+    - name: Login to Docker Hub (optional when credentials supplied)
       ansible.builtin.shell: |
-        aws ecr get-login-password --region {{ region }} | \
-        docker login --username AWS --password-stdin {{ ecr_registry }}
+        echo "{{ dockerhub_token }}" | docker login --username "{{ dockerhub_username }}" --password-stdin
       become_user: "ubuntu"
-      environment:
-        AWS_SHARED_CREDENTIALS_FILE: "/home/ubuntu/.aws/credentials"
+      register: dockerhub_login
+      when:
+        - dockerhub_username | length > 0
+        - dockerhub_token | length > 0
 
-    - name: Pull Docker image from ECR
+    - name: Pull Docker image from Docker Hub
       community.docker.docker_image:
-        name: "{{ ecr_repo_url }}:latest"
+        name: "{{ dockerhub_image }}"
         source: pull
       become_user: "ubuntu"
 
     - name: Run Docker container
       community.docker.docker_container:
         name: myhotel-backend
-        image: "{{ ecr_repo_url }}:latest"
+        image: "{{ dockerhub_image }}"
         state: started
         restart_policy: always
         published_ports:

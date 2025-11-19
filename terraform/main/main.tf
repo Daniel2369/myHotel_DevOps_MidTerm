@@ -137,6 +137,16 @@ resource "aws_instance" "hotel_ec2" {
   user_data = file("${path.module}/ansible-server.sh")
 }
 
+# Elastic IP for Ansible server to keep a static public address
+resource "aws_eip" "ansible_server" {
+  domain   = "vpc"
+  instance = aws_instance.hotel_ec2.id
+
+  tags = {
+    Name = "ansible-server-eip"
+  }
+}
+
 
 # =========================================
 # Execution steps

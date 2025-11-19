@@ -6,6 +6,11 @@ output "ec2_public_ip" {
   value = aws_instance.hotel_ec2.public_ip
 }
 
+output "ansible_server_eip" {
+  description = "Static Elastic IP attached to the Ansible bastion host"
+  value       = aws_eip.ansible_server.public_ip
+}
+
 # Private ASG instances (private IPs) — useful for Ansible inventory when
 # connecting to the application instances in the private subnets.
 # Find instances created by the ASG by filtering EC2 instances with the

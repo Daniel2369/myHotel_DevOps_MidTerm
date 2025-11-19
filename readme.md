@@ -171,7 +171,8 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
       * If you have changed the bucket name - change the name inside the following files:
         * terraform/main/backend.tf
         * terraform/main/setup-tf-backend.sh
-    2. Create the Docker image locally - docker build -t myHotel:latest .
+    2. Create the Docker image locally:
+       * docker buildx build --platform linux/amd64 -t myhotel:latest .
     3. Copy AWS creds inside ~/.aws/credentials
     4. Create the DynamoDB lock table (bootstrap):
        a. cd terraform/dynamoDB
@@ -215,15 +216,20 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
         jq --version # validate
         
         # Set AWS creds using the .json file
-        mkdir -p ~/.aws
-        cat > ~/.aws/credentials <<EOF
-        [default]
-        aws_access_key_id = $(jq -r '.aws_access_key_id' ansible_vars.json)
-        aws_secret_access_key = $(jq -r '.aws_secret_access_key' ansible_vars.json)
-        aws_session_token = $(jq -r '.aws_session_token' ansible_vars.json)
-        EOF
+        mkdir -p /home/ubuntu.aws
+        cd /home/ubuntu
+
+         cat <<EOF > /home/ubuntu/.aws/credentials
+         [default]
+         aws_access_key_id = $(jq -r '.aws_access_key_id' /home/ubuntu/ansible_vars.json)
+         aws_secret_access_key = $(jq -r '.aws_secret_access_key' /home/ubuntu/ansible_vars.json)
+         aws_session_token = $(jq -r '.aws_session_token' /home/ubuntu/ansible_vars.json)
+         EOF
+
         
-        chmod 600 ~/.aws/credentials # Set permissions to read the file
+        chmod 600 /home/ubuntu/.aws/credentials # Set permissions to read the file
+
+        cat /home/ubuntu/.aws/credentials # verify
         
         # Update inventory.ini file with the private vm's private ip's
         Take the IP's from AWS console and edit the file using vi
