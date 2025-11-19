@@ -8,10 +8,5 @@
     "sensitive": false,
     "type": "string",
     "value": "54.226.134.186"
-  },
-  "ecr_url": {
-    "sensitive": false,
-    "type": "string",
-    "value": "623866174656.dkr.ecr.us-east-1.amazonaws.com/myhotel"
-  }
+    }
 }
