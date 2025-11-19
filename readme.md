@@ -203,7 +203,7 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        a. chmod 400 labsuser.pem
        b. ./scripts/scp_data.sh $(terraform output -raw ec2_public_ip)
     9. Ansible part:
-       ssh -i /terraform/labsuser.pem ubuntu@<ANSIBLE_IP> #run terraform output to see the public ip
+       ssh -i /terraform/main/labsuser.pem ubuntu@<ANSIBLE_IP> #run terraform output to see the public ip
 
         Inside the server:
         sudo su - # switch to root user
