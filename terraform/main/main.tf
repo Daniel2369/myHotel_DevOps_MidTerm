@@ -72,7 +72,7 @@ private_security_group = "private_security_group"
 # ===============================================
 module "alb_asg" {
   source = "../modules/alb_asg"
-  depends_on = [ module.myHotel_APP_ECR, module.my_vpc ]
+  depends_on = [ module.my_vpc ]
 
   alb_name          = "myhotel-alb"
   lb_security_group = module.my_vpc.public_security_group_id
