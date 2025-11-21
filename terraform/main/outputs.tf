@@ -42,3 +42,13 @@ output "asg_instance_private_ips" {
 output "private_key_path" {
   value = "${path.module}/labsuser.pem"
 }
+
+output "private_ec2_instance_id" {
+  description = "ID of the standalone EC2 instance in the private subnet"
+  value       = aws_instance.private_ec2.id
+}
+
+output "private_ec2_private_ip" {
+  description = "Private IP address of the standalone EC2 instance in the private subnet"
+  value       = aws_instance.private_ec2.private_ip
+}

@@ -4,12 +4,80 @@ from contextlib import asynccontextmanager
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates # Frontend library using html templates
 from fastapi.staticfiles import StaticFiles
-import random
+import json
+import os
 import requests
-
+from pathlib import Path
 
 # Declare an empty DB
 room_db:dict = {}
+
+# JSON file path - prioritize mounted volume in Kubernetes, fallback to local file
+JSON_FILE_PATH = os.getenv("HOTEL_JSON_PATH", "/app/data/hotel_rooms.json")
+LOCAL_JSON_PATH = "hotel_rooms.json"
+
+def get_json_file_path():
+    """Determine the correct path for the JSON file."""
+    # First check if mounted volume path exists (Kubernetes)
+    if os.path.exists(JSON_FILE_PATH):
+        return JSON_FILE_PATH
+    # Fallback to local file (local development)
+    elif os.path.exists(LOCAL_JSON_PATH):
+        return LOCAL_JSON_PATH
+    # If neither exists, use the mounted volume path (will create new file)
+    else:
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(JSON_FILE_PATH), exist_ok=True)
+        return JSON_FILE_PATH
+
+def load_rooms():
+    """
+    Loads hotel rooms from JSON file.
+    Returns:
+        dict: A dictionary containing room numbers as keys and their details as values.
+    """
+    global room_db
+    json_path = get_json_file_path()
+    
+    try:
+        if os.path.exists(json_path):
+            with open(json_path, 'r') as f:
+                data = json.load(f)
+                # Convert string keys to int keys to match the original structure
+                rooms_dict = {}
+                for room_id_str, room_data in data.get("rooms", {}).items():
+                    rooms_dict[int(room_id_str)] = room_data
+                room_db = rooms_dict
+                print(f"Loaded {len(room_db)} rooms from {json_path}")
+            return
+    except Exception as e:
+        print(f"Error loading rooms from {json_path}: {e}")
+    
+    # If file doesn't exist or error occurred, initialize empty database
+    room_db = {}
+    print(f"No existing room data found. Starting with empty database.")
+
+def save_rooms():
+    """
+    Saves hotel rooms to JSON file.
+    """
+    json_path = get_json_file_path()
+    
+    try:
+        # Convert int keys to string keys for JSON
+        rooms_dict = {str(room_id): room_data for room_id, room_data in room_db.items()}
+        data = {"rooms": rooms_dict}
+        
+        # Create directory if it doesn't exist (only if path has a directory)
+        dir_path = os.path.dirname(json_path)
+        if dir_path:
+            os.makedirs(dir_path, exist_ok=True)
+        
+        with open(json_path, 'w') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        print(f"Saved {len(room_db)} rooms to {json_path}")
+    except Exception as e:
+        print(f"Error saving rooms to {json_path}: {e}")
 
 # Get EC2 instance-id
 def get_instance_id():
@@ -21,42 +89,12 @@ def get_instance_id():
     except:
         return "unknown"
 
-
-def setup_rooms(total_rooms=20):
-    """
-    Creates a database (dictionary) of hotel rooms with default details.
-    total_rooms (int): The total number of rooms to initialize.
-
-    Returns:
-        dict: A dictionary containing room numbers as keys and their details as values.
-    """
-    global room_db
-    room_db = {}
-    guest_names = ("Daniel", "Idan", "Yosi", "Aviva", "Daniela")
-    print("Setting up rooms...")
-    for room_id in range(1, total_rooms + 1):
-        floor_number = (room_id - 1) // 10 + 1  # Calculate floor based on room ID
-        room_category = "Single" if room_id % 2 == 1 else "Double"
-        cost = 100 if room_category == "Single" else 150
-        if random.random() < 0.5: # 50% chance for a room to occupied
-            guest_name = random.choice(guest_names)
-            occupied = True
-        else:
-            guest_name = None
-            occupied = False
-
-        room_db[room_id] = {
-            "category": room_category,
-            "cost": cost,
-            "floor_number": floor_number,
-            "guest_name": guest_name,
-            "occupied": bool(guest_name)
-        }
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    setup_rooms(total_rooms=20)
+    load_rooms()
     yield
+    # Save rooms on shutdown
+    save_rooms()
 
 app = FastAPI(lifespan=lifespan) # Loading the framework to a variable
 templates = Jinja2Templates(directory="templates") # Loading the menu.html file
@@ -104,6 +142,7 @@ async def create_room(
     floor_number: int = Form(...),
     guest_name: str = Form(None)
 ):
+    global room_db
 
     new_room_id = max(room_db.keys(), default=0) + 1 # Will append id automatically
 
@@ -114,6 +153,9 @@ async def create_room(
     "guest_name": guest_name,
     "occupied": bool(guest_name)
     }
+    
+    # Save to JSON file
+    save_rooms()
     
     return templates.TemplateResponse("create_room.html", {
     "request": request,
@@ -128,7 +170,8 @@ async def delete_room(
     global room_db
     if room_id in room_db:
         room_db.pop(room_id)
-
+        # Save to JSON file
+        save_rooms()
         message = f"Room deleted successfully, Room_ID = {room_id}"
         is_error = False
     else:
@@ -150,6 +193,7 @@ async def update_room(
     floor_number: int = Form(...),
     guest_name: str = Form(None)
 ):
+    global room_db
 
     if room_id in room_db:
         room = room_db[room_id]
@@ -161,6 +205,8 @@ async def update_room(
             "guest_name": guest_name,
             "occupied": bool(guest_name)
         })
+        # Save to JSON file
+        save_rooms()
         message = f"Room {room_id} was successfully updated."
         is_error = False
     else:
@@ -180,17 +226,18 @@ async def check_in(
     category: str = Form(...)
 ):
     global room_db
+    message = f"No available room in that category."
+    is_error = True
+    
     for room_id, room in room_db.items():
         if not room["occupied"] and room["category"] == category:
             room["guest_name"] = guest_name
             room["occupied"] = True
-            
+            # Save to JSON file
+            save_rooms()
             message = f"Guest was successfully assigned to room, Room_ID= {room_id}."
             is_error = False
             break
-        else:
-            message = f"No available room in that category."
-            is_error = True
 
     return templates.TemplateResponse("check_in.html", {
         "request": request,
@@ -204,16 +251,22 @@ async def check_out(
     room_id: int = Form(...),
     guest_name: str = Form(...)
 ):
+    global room_db
+    
     if room_id in room_db: 
         if room_db[room_id]["guest_name"] == guest_name:
             room_db[room_id]["guest_name"] = None
             room_db[room_id]["occupied"] = False
-            
+            # Save to JSON file
+            save_rooms()
             message = f"{guest_name} was checked_out from Room_ID = {room_id}."
             is_error = False
         else:
             message = "Couldn't complete the check_out."
             is_error = True
+    else:
+        message = f"Room {room_id} not found."
+        is_error = True
 
     return templates.TemplateResponse("check_out.html", {
         "request": request,

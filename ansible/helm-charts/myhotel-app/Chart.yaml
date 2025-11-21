@@ -1,0 +1,7 @@
+apiVersion: v2
+name: myhotel-app
+description: MyHotel Application with NFS-backed Persistent Storage
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+

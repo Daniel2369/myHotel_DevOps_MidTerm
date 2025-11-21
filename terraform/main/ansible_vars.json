@@ -1,8 +1,7 @@
 {
-  "alb_asg_url": "myhotel-alb-1848717136.us-east-1.elb.amazonaws.com",
-  "ec2_public_ip": "54.80.210.81",
-  "ecr_url": "623866174656.dkr.ecr.us-east-1.amazonaws.com/myhotel",
-  "aws_access_key_id": "ASIAZCQKSLTALSIS5537",
-  "aws_secret_access_key": "UVwHKQ1/Sqwwfpi6atapoXRsRhv+/p3IF7JGrWmQ",
-  "aws_session_token": "IQoJb3JpZ2luX2VjELf//////////wEaCXVzLXdlc3QtMiJHMEUCIQDIQFYHNXdRORCKanibmvY7t73veuCuyKG3GGjQQuNwlQIgXu8gOUnUZjORNt5hrjpfACzz7984Ykk9D4JCakySbmwqswIIQBABGgw2MjM4NjYxNzQ2NTYiDC+7PIH3y+VmL5ZtrSqQAuPisgvxyDG1rT2AH+A6K+8KQ6ORZ2TUPb8r14jtZnUUDCk8/uAHu37DEwtTs//N3ebE8ENK3DLUDe1hvbQaDCkCQtbQyG8vFmD6n/PktcMavbuGmdV1EaFdd30YL8mm6k2jPOL7n0q3RG0z4xFZNMVok23ztANinm93Y1ODcPzEEDLF8egpPMwqgxkQzlwegTjwzeraFVl7XBiNMdxREGl4kN4bdLW8nDiM2QyeROF6pfu8u4yvqJNDd2scxE17vsNoqWVRU/ScFE9qUu/SdSEQUAifPPXJeNi4xZPYKwlJBEdYinnkp35Fu3yYizcb565G/FPMr7puOqJ7bpw1mdUm7eZJxMP/q9EuaGMWfM5FMKz5yMYGOp0BsR+ntFnohGs8UMwe2/EYQBOCcUG/H8QrZOq+avRDU0rI1AWdye9hPTX2Wea+UEgbbcbE60xGABXHyPj7qZg7XO6k8Trok2fdsrIICl1+ccoWg2R6nddFWnqW0ineJ8XuwCLGsY6JHDjQUe4dVt5moN13iL8zsiN4UpRlWudF/keCHdgh2LztnGenlJNH/aBA3EkBn2blDPjPqOBD8g=="
+  "alb_asg_url": "myhotel-alb-205369419.us-east-1.elb.amazonaws.com",
+  "ansible_server_eip": "100.28.133.230",
+  "aws_access_key_id": "ASIAUP5DJSQIP2N5VSVD",
+  "aws_secret_access_key": "tUZ6SeOBjvckCk/+csFNCLtaJxpTxlYyoS2kYTKM",
+  "aws_session_token": "IQoJb3JpZ2luX2VjED4aCXVzLXdlc3QtMiJIMEYCIQCG4aQA7KGi0Snpkb26SMk7XHGTG5fW7MfvaMzcrH7FLgIhAO4Xn49DBcAw+53DLbkneLO+GfcJfO9tLFQR3K3VG7xyKrMCCAcQARoMMzA5MDQzMjM3OTA0Igzm20hu7oOyAdTa5o8qkAJJui86ZMx4/F35fEgFW4ygiqUqiet/02PQmtQv5UqC5M+qL/A7N3tOrgYcQX2om/iz4WcOlzAYdVxsIhbsfum52pulfZxAEu4Eu8pB71FvAN/EtSgq88Goc9z15oWXK1d28mM+Bw+qv9dPAeCG02uWvs/NShtgvrC7u+qFoMfF+Ke9/CRVO8IptTDuCQZBSdEQewe3q0D62xKKS8HwjxS8MHUQp8I8ou92BnMnS92JFnFc6AYoNe79eiMWcvy+5DTOwx79J6KR0UzODneyLp0MfGllUVvKuwEHefRlsJwu42W7Y2Iv4ieM96244UFDm3FMiY/Fux9FjBFkKzbUOsNPvWq4unRbp0vgO2iq9JUI3zCRgoDJBjqcAVcG+1CCUb+4HDk5dKAouyQcFJpacVfEETG5tgnTk02lJ4NBBoVji8nIUrmmDbcRaVZSdityDwzH9qKOehFHdNnmCcbWQuvbf1ubokaq6zOIPh0sz7skfLX68Yk1mIB77pnAXo0HCVqDtrlKsyexh5IFUeeo2vPF51r5apSrl6c/WJaLmQY8naUsk3BPbkBkkn+3p5uTaiw+0kHQbg=="
 }

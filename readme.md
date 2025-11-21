@@ -166,23 +166,21 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
 ![Alt text for the image](https://github.com/Daniel2369/myHotel_DevOps_MidTerm/blob/1c541f51c9a7638f0d2248eb6ae7a264160cbfb2/static/MyHotel%20AWS%20Deployment%20Diagram.drawio.png)
 
  ```bash
-    1. Create S3 bucket manually in AWS console = devops2025-technion-finalcourse-dberliant-bucket
-      * If the bucket is taken change the name
-      * If you have changed the bucket name - change the name inside the following files:
-        * terraform/main/backend.tf
-        * terraform/main/setup-tf-backend.sh
-    2. Create the Docker image locally:
+    1. Create the Docker image locally:
        * docker buildx build --platform linux/amd64 -t myhotel:latest .
-    3. Copy AWS creds inside ~/.aws/credentials
-    4. Create the DynamoDB lock table (bootstrap):
+    2. Copy AWS creds inside ~/.aws/credentials
+    3. Create the DynamoDB lock table (bootstrap):
        a. cd terraform/dynamoDB
        b. terraform init
        c. terraform apply -auto-approve
        This creates terraform-locks. Confirm the output shows the table name.
-    5. Run /Terraform/main/setup-tf-backend.sh
+    4. Run /Terraform/main/setup-tf-backend.sh
        a. Validate the following output is printed: DynamoDB table 'terraform-locks' already exists.
                                                     Terraform backend resources are ready.
-    6. Apply Terraform infra:
+       b. If there is a failure due to a taken S3 bucket name then change the name inside the following files and re-run the script:
+          * terraform/main/backend.tf
+          * terraform/main/setup-tf-backend.sh
+    5. Apply Terraform infra:
        Pre-setup: Configure in the ternminal the following variables:
                   export DOCKERHUB_USERNAME="your_username"
                   export DOCKERHUB_TOKEN="your_token"
@@ -194,29 +192,29 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        b. terraform init -reconfigure
        c. terraform plan -out plan
        d. terraform apply plan
-    7. Generate ansible_vars.json (and fill credentials securely): 
+    6. Generate ansible_vars.json (and fill credentials securely): 
        a. ./scripts/generate-ansible-vars.sh
        b. cd ../
        c. terraform output copy lb and ec2 ip and paste into the json file created inside /scripts
        d. then edit ansible_vars.json to add AWS credentials (or put them on the Ansible host).
-    8. Copy files to the Ansible server
+    7. Copy files to the Ansible server
        Note: Copy the certificate from the AWS lab's UI and copy it into the project directory .pem file and save
        a. chmod 400 labsuser.pem
-       b. ./scripts/scp_data.sh $(terraform output -raw ec2_public_ip)
-    9. Ansible part:
-       ssh -i /terraform/main/labsuser.pem ubuntu@<ANSIBLE_IP> #run terraform output to see the public ip
+       b. ./scp_data.sh
+    8. Ansible part:
+       ssh -i /terraform/main/labsuser.pem ubuntu@<ANSIBLE_IP>
 
         Inside the server:
         sudo su - # switch to root user
         # confirm files are present in /home/ubuntu
-        ls -la ~
+        ls -la
         
         # Install jq
-        sudo apt-get update && sudo apt-get install -y jq
+        apt-get update && sudo apt-get install -y jq
         jq --version # validate
         
         # Set AWS creds using the .json file
-        mkdir -p /home/ubuntu.aws
+        mkdir -p /home/ubuntu/.aws
         cd /home/ubuntu
 
          cat <<EOF > /home/ubuntu/.aws/credentials
@@ -243,7 +241,7 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
         ssh private-ip-vm-2 
         docker ps
 
-    10. Check in AWS console EC2 → Target group machine health
-    11. Load balancer → Take ELB domain and run in HostOS’s browser check the application is loaded.
-    12. Delete ECR container manually, Run /scripts/destroy-infra.sh - to clean the environment.
+    9. Check in AWS console EC2 → Target group machine health
+    10. Load balancer → Take ELB domain and run in HostOS’s browser check the application is loaded.
+    11. Delete ECR container manually, Run /scripts/destroy-infra.sh - to clean the environment.
    ```

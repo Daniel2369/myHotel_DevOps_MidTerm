@@ -200,6 +200,86 @@ resource "aws_vpc_security_group_ingress_rule" "allow_ssh_from_ansible_server" {
   ip_protocol = "tcp"
 }
 
+# Kubernetes API Server (control plane)
+resource "aws_vpc_security_group_ingress_rule" "allow_k8s_api_server" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 6443
+  to_port                      = 6443
+  ip_protocol                  = "tcp"
+  description                  = "Kubernetes API server"
+}
+
+# Kubelet API (workers)
+resource "aws_vpc_security_group_ingress_rule" "allow_kubelet_api" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 10250
+  to_port                      = 10250
+  ip_protocol                  = "tcp"
+  description                  = "Kubelet API"
+}
+
+# Kube-scheduler
+resource "aws_vpc_security_group_ingress_rule" "allow_kube_scheduler" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 10259
+  to_port                      = 10259
+  ip_protocol                  = "tcp"
+  description                  = "Kube-scheduler"
+}
+
+# Kube-controller-manager
+resource "aws_vpc_security_group_ingress_rule" "allow_kube_controller_manager" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 10257
+  to_port                      = 10257
+  ip_protocol                  = "tcp"
+  description                  = "Kube-controller-manager"
+}
+
+# etcd client communication
+resource "aws_vpc_security_group_ingress_rule" "allow_etcd_client" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 2379
+  to_port                      = 2380
+  ip_protocol                  = "tcp"
+  description                  = "etcd client/server"
+}
+
+# Calico/VXLAN
+resource "aws_vpc_security_group_ingress_rule" "allow_vxlan" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 4789
+  to_port                      = 4789
+  ip_protocol                  = "udp"
+  description                  = "Calico VXLAN"
+}
+
+# Calico BGP
+resource "aws_vpc_security_group_ingress_rule" "allow_calico_bgp" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 179
+  to_port                      = 179
+  ip_protocol                  = "tcp"
+  description                  = "Calico BGP"
+}
+
+# Allow all TCP traffic between nodes in the same security group (for Kubernetes)
+resource "aws_vpc_security_group_ingress_rule" "allow_k8s_node_communication" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 10248
+  to_port                      = 10255
+  ip_protocol                  = "tcp"
+  description                  = "Kubernetes node communication ports"
+}
+
 resource "aws_vpc_security_group_egress_rule" "allow_outbound_all2" {
   security_group_id = aws_security_group.private_security_group.id
   cidr_ipv4         = "0.0.0.0/0"

@@ -1,0 +1,186 @@
+# Default values for myhotel-app
+
+# NFS Server Configuration
+nfsServer:
+  image: itsthenetwork/nfs-server-alpine:latest
+  storageSize: 10Gi
+  serverPath: /exports
+
+# Application Configuration
+app:
+  image: beri1/devops-final-project:latest
+  imagePullPolicy: Always
+  replicaCount: 2
+  port: 8000
+  containerPort: 8000
+
+# Persistent Volume Configuration
+persistentVolume:
+  capacity: 10Gi
+  accessModes:
+    - ReadWriteMany
+  storageClass: "nfs"
+
+# Persistent Volume Claim Configuration
+persistentVolumeClaim:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "nfs"
+  size: 10Gi
+
+# Service Configuration
+service:
+  type: LoadBalancer
+  port: 80
+  targetPort: 8000
+
+# Hotel rooms JSON file (database)
+hotelRoomsJson:
+  enabled: true
+  fileName: "hotel_rooms.json"
+  content: |
+    {
+      "rooms": {
+        "1": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 1,
+          "guest_name": "Daniel",
+          "occupied": true
+        },
+        "2": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 1,
+          "guest_name": null,
+          "occupied": false
+        },
+        "3": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 1,
+          "guest_name": "Aviva",
+          "occupied": true
+        },
+        "4": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 1,
+          "guest_name": null,
+          "occupied": false
+        },
+        "5": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 1,
+          "guest_name": null,
+          "occupied": false
+        },
+        "6": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 1,
+          "guest_name": "Idan",
+          "occupied": true
+        },
+        "7": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 1,
+          "guest_name": "Yosi",
+          "occupied": true
+        },
+        "8": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 1,
+          "guest_name": null,
+          "occupied": false
+        },
+        "9": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 1,
+          "guest_name": "Daniela",
+          "occupied": true
+        },
+        "10": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 1,
+          "guest_name": null,
+          "occupied": false
+        },
+        "11": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 2,
+          "guest_name": null,
+          "occupied": false
+        },
+        "12": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 2,
+          "guest_name": "Daniel",
+          "occupied": true
+        },
+        "13": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 2,
+          "guest_name": null,
+          "occupied": false
+        },
+        "14": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 2,
+          "guest_name": "Aviva",
+          "occupied": true
+        },
+        "15": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 2,
+          "guest_name": "Idan",
+          "occupied": true
+        },
+        "16": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 2,
+          "guest_name": null,
+          "occupied": false
+        },
+        "17": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 2,
+          "guest_name": null,
+          "occupied": false
+        },
+        "18": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 2,
+          "guest_name": "Yosi",
+          "occupied": true
+        },
+        "19": {
+          "category": "Single",
+          "cost": 100,
+          "floor_number": 2,
+          "guest_name": null,
+          "occupied": false
+        },
+        "20": {
+          "category": "Double",
+          "cost": 150,
+          "floor_number": 2,
+          "guest_name": "Daniela",
+          "occupied": true
+        }
+      }
+    }
+

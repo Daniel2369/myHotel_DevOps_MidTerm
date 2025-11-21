@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "myhotel-app.fullname" . }}-app-pvc
+  labels:
+    {{- include "myhotel-app.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- range .Values.persistentVolumeClaim.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  storageClassName: ""
+  resources:
+    requests:
+      storage: {{ .Values.persistentVolumeClaim.size | quote }}
+

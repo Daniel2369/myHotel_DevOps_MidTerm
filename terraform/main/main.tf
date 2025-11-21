@@ -147,6 +147,22 @@ resource "aws_eip" "ansible_server" {
   }
 }
 
+# ===============================================
+# Additional EC2 instance in private subnet
+# ===============================================
+resource "aws_instance" "private_ec2" {
+  ami           = "ami-0a7d80731ae1b2435"
+  instance_type = "t3.small"
+  key_name      = "vockey"
+  subnet_id     = module.my_vpc.private_subnet_ids[0]
+  vpc_security_group_ids = [module.my_vpc.private_security_group_id]
+  
+  tags = {
+    Name = "private-ec2-instance"
+  }
+  
+  user_data = ""
+}
 
 # =========================================
 # Execution steps

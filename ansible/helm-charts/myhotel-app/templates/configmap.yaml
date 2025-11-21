@@ -1,0 +1,12 @@
+{{- if .Values.hotelRoomsJson.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "myhotel-app.fullname" . }}-hotel-rooms-json
+  labels:
+    {{- include "myhotel-app.labels" . | nindent 4 }}
+data:
+  {{ .Values.hotelRoomsJson.fileName }}: |
+{{ .Values.hotelRoomsJson.content | indent 4 }}
+{{- end }}
+

@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ include "myhotel-app.fullname" . }}-pv
+  labels:
+    {{- include "myhotel-app.labels" . | nindent 4 }}
+spec:
+  capacity:
+    storage: {{ .Values.persistentVolume.capacity | quote }}
+  accessModes:
+    {{- range .Values.persistentVolume.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: ""
+  nfs:
+    server: {{ include "myhotel-app.fullname" . }}-nfs-server
+    path: {{ .Values.nfsServer.serverPath }}
+

@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "myhotel-app.fullname" . }}
+  labels:
+    {{- include "myhotel-app.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "myhotel-app.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "myhotel-app.selectorLabels" . | nindent 8 }}
+    spec:
+      initContainers:
+      {{- if .Values.hotelRoomsJson.enabled }}
+      - name: copy-hotel-rooms-json
+        image: busybox:latest
+        command: ['sh', '-c']
+        args:
+          - |
+            echo "Copying hotel rooms JSON file to NFS volume..."
+            cp /config/{{ .Values.hotelRoomsJson.fileName }} /mnt/{{ .Values.hotelRoomsJson.fileName }}
+            ls -la /mnt/
+            echo "Hotel rooms JSON file copied successfully!"
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        - name: nfs-storage
+          mountPath: /mnt
+      {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: {{ .Values.app.image }}
+        imagePullPolicy: {{ .Values.app.imagePullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.app.containerPort }}
+          protocol: TCP
+        volumeMounts:
+        - name: nfs-storage
+          mountPath: /app/data
+        env:
+        - name: HOTEL_JSON_PATH
+          value: "/app/data/hotel_rooms.json"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      {{- if .Values.hotelRoomsJson.enabled }}
+      - name: config
+        configMap:
+          name: {{ include "myhotel-app.fullname" . }}-hotel-rooms-json
+      {{- end }}
+      - name: nfs-storage
+        persistentVolumeClaim:
+          claimName: {{ include "myhotel-app.fullname" . }}-app-pvc
+
