@@ -2,23 +2,17 @@
 - name: Bootstrap Kubernetes Cluster
   hosts: all
   become: yes
-
   vars_files:
-    - ansible_vars.json   # path to your JSON file on the controller
-
+    - ansible_vars.json
   vars:
     region: "us-east-1"
     ansible_user: ubuntu
-    k8s_controller_host: "{{ groups['myhotel_ec2'][0] | default('') }}"
+    kube_version: "1.28"
 
   tasks:
-
-    - name: Wait for apt/dpkg locks to be released
+    - name: Wait for apt locks
       ansible.builtin.shell: |
-        while fuser /var/lib/dpkg/lock >/dev/null 2>&1 || \
-              fuser /var/lib/apt/lists/lock >/dev/null 2>&1 || \
-              fuser /var/cache/apt/archives/lock >/dev/null 2>&1; do
-          echo "Waiting for apt/dpkg lock..."
+        while fuser /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock >/dev/null 2>&1; do
           sleep 5
         done
       changed_when: false
@@ -26,7 +20,6 @@
     - name: Update apt cache
       ansible.builtin.apt:
         update_cache: yes
-        cache_valid_time: 3600
 
     - name: Install base dependencies
       ansible.builtin.apt:
@@ -40,15 +33,7 @@
           - awscli
         state: present
 
-    - name: Create .aws directory for ubuntu user
-      ansible.builtin.file:
-        path: "/home/ubuntu/.aws"
-        state: directory
-        owner: "ubuntu"
-        group: "ubuntu"
-        mode: '0700'
-
-    - name: Create AWS credentials file
+    - name: Setup AWS credentials
       ansible.builtin.copy:
         dest: "/home/ubuntu/.aws/credentials"
         content: |
@@ -56,24 +41,16 @@
           aws_access_key_id={{ aws_access_key_id }}
           aws_secret_access_key={{ aws_secret_access_key }}
           aws_session_token={{ aws_session_token }}
-        owner: "ubuntu"
-        group: "ubuntu"
+        owner: ubuntu
+        group: ubuntu
         mode: '0600'
-
-    - name: Create .aws directory for root
-      ansible.builtin.file:
-        path: "/root/.aws"
-        state: directory
-        owner: "root"
-        group: "root"
-        mode: '0700'
 
     - name: Copy credentials for root
       ansible.builtin.copy:
         src: "/home/ubuntu/.aws/credentials"
         dest: "/root/.aws/credentials"
-        owner: "root"
-        group: "root"
+        owner: root
+        group: root
         mode: '0600'
 
 - name: Install Kubernetes Control Plane
@@ -83,8 +60,7 @@
     ansible_user: ubuntu
 
   tasks:
-
-    - name: Set hostname to k8s-controller
+    - name: Set hostname
       ansible.builtin.hostname:
         name: k8s-controller
 
@@ -92,15 +68,13 @@
       ansible.builtin.shell: |
         swapoff -a
         sed -i '/ swap / s/^/#/' /etc/fstab
-      changed_when: true
 
-    - name: Load required kernel modules
+    - name: Load kernel modules
       ansible.builtin.shell: |
         echo "overlay" > /etc/modules-load.d/k8s.conf
         echo "br_netfilter" >> /etc/modules-load.d/k8s.conf
         modprobe overlay
         modprobe br_netfilter
-      changed_when: true
 
     - name: Configure network settings
       ansible.builtin.copy:
@@ -110,6 +84,7 @@
           net.bridge.bridge-nf-call-ip6tables = 1
           net.ipv4.ip_forward                 = 1
         mode: '0644'
+      notify: apply sysctl
 
     - name: Apply network settings
       ansible.builtin.shell: sysctl --system
@@ -125,63 +100,20 @@
         mkdir -p /etc/containerd
         containerd config default | tee /etc/containerd/config.toml
         sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-      changed_when: true
 
-    - name: Restart and enable containerd
+    - name: Restart containerd
       ansible.builtin.systemd:
         name: containerd
         state: restarted
         enabled: yes
-        daemon_reload: yes
 
-    - name: Get latest Kubernetes version
+    - name: Setup Kubernetes repository
       ansible.builtin.shell: |
-        curl -s --max-time 30 --retry 3 --connect-timeout 10 https://api.github.com/repos/kubernetes/kubernetes/releases/latest | grep tag_name | cut -d '"' -f 4 | cut -d 'v' -f 2 | cut -d '.' -f 1,2
-      register: kube_version
-      changed_when: false
-      failed_when: false
-
-    - name: Set KUBE_VERSION fact (with fallback)
-      ansible.builtin.set_fact:
-        kube_version: "{{ kube_version.stdout | default('1.28') }}"
-
-    - name: Create keyrings directory
-      ansible.builtin.file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: '0755'
-
-    - name: Validate Kubernetes version
-      ansible.builtin.assert:
-        that:
-          - kube_version | length > 0
-          - kube_version is match('^[0-9]+\\.[0-9]+$')
-        fail_msg: "Failed to get valid Kubernetes version. Got: {{ kube_version }}"
-      when: kube_version is defined
-
-    - name: Download Kubernetes GPG key
-      ansible.builtin.shell: |
-        curl -fsSL --max-time 60 --retry 3 --connect-timeout 10 -L \
-          https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/Release.key \
-          -o /tmp/k8s-release.key && \
-        gpg --batch --no-tty --yes --dearmor < /tmp/k8s-release.key > /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
-        rm -f /tmp/k8s-release.key
-      register: gpg_download
-      changed_when: true
-      failed_when: gpg_download.rc != 0
-      retries: 3
-      delay: 10
-
-    - name: Add Kubernetes repository
-      ansible.builtin.copy:
-        dest: /etc/apt/sources.list.d/kubernetes.list
-        content: |
-          deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/ /
-        mode: '0644'
-
-    - name: Update apt cache after adding K8s repo
-      ansible.builtin.apt:
-        update_cache: yes
+        mkdir -p /etc/apt/keyrings
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/Release.key | \
+          gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/ /" | \
+          tee /etc/apt/sources.list.d/kubernetes.list
 
     - name: Install Kubernetes components
       ansible.builtin.apt:
@@ -190,228 +122,43 @@
           - kubeadm
           - kubectl
         state: present
+        update_cache: yes
 
     - name: Hold Kubernetes packages
       ansible.builtin.shell: apt-mark hold kubelet kubeadm kubectl
       changed_when: false
 
-    - name: Wait for containerd to be fully ready
-      ansible.builtin.pause:
-        seconds: 30
-
-    - name: Check if Kubernetes is already initialized
-      ansible.builtin.stat:
-        path: /etc/kubernetes/admin.conf
-      register: kubeadm_config
-
-    - name: Check if kubectl config exists
-      ansible.builtin.stat:
-        path: /home/ubuntu/.kube/config
-      register: kubectl_config
-      failed_when: false
-
-    - name: Check for existing manifests (indicator of partial/broken init)
-      ansible.builtin.stat:
-        path: /etc/kubernetes/manifests/kube-apiserver.yaml
-      register: manifests_exist
-      failed_when: false
-
-    - name: Check if kubeadm init can run (no port conflicts)
+    - name: Reset kubeadm if already initialized
       ansible.builtin.shell: |
-        # Check if any Kubernetes ports are in use
-        if (ss -tuln 2>/dev/null || netstat -tuln 2>/dev/null) | grep -q ':6443 '; then
-          echo "PORTS_IN_USE"
-        else
-          echo "PORTS_FREE"
+        if [ -f /etc/kubernetes/admin.conf ]; then
+          kubeadm reset -f || true
         fi
-      register: port_check
       failed_when: false
-      changed_when: false
-
-    - name: Check if cluster actually works
-      ansible.builtin.shell: |
-        kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes --no-headers 2>&1 | grep -q "Ready" && echo "HEALTHY" || echo "UNHEALTHY"
-      register: cluster_works
-      when: kubeadm_config.stat.exists
-      failed_when: false
-      changed_when: false
-
-    - name: Set reset flag based on cluster state
-      ansible.builtin.set_fact:
-        should_reset: "{{ (manifests_exist.stat.exists | default(false)) and (cluster_works.stdout | default('UNHEALTHY') == 'UNHEALTHY') or (port_check.stdout | default('') == 'PORTS_IN_USE') }}"
-      when: kubeadm_config.stat.exists
-
-    - name: Reset kubeadm if broken or ports in use
-      ansible.builtin.shell: |
-        echo "Resetting kubeadm due to broken state or port conflicts..."
-        kubeadm reset -f || true
-        systemctl stop kubelet 2>/dev/null || true
-        rm -rf /etc/cni/net.d
-        rm -rf /var/lib/etcd
-        rm -rf /etc/kubernetes
-        rm -rf /var/lib/kubelet
-        iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X || true
-        ipvsadm -C || true
-        # Kill any processes using Kubernetes ports
-        fuser -k 6443/tcp 2>/dev/null || true
-        fuser -k 10250/tcp 2>/dev/null || true
-        fuser -k 2379/tcp 2>/dev/null || true
-        fuser -k 2380/tcp 2>/dev/null || true
-        sleep 3
-      when: 
-        - kubeadm_config.stat.exists
-        - should_reset | default(false) | bool
-      register: kubeadm_reset
-      changed_when: true
 
     - name: Initialize Kubernetes control plane
       ansible.builtin.shell: |
         kubeadm init --pod-network-cidr=10.244.0.0/16
-      register: kubeadm_init
-      when: not kubeadm_config.stat.exists or kubeadm_reset.changed | default(false)
-      changed_when: "'Your Kubernetes control-plane has initialized' in kubeadm_init.stdout"
-      failed_when: 
-        - kubeadm_init.rc != 0
-        - "'Your Kubernetes control-plane has initialized' not in kubeadm_init.stdout"
 
-    - name: Configure kubectl for ubuntu user
+    - name: Configure kubectl
       ansible.builtin.shell: |
-        mkdir -p /home/ubuntu/.kube
-        cp -i /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
-        chown ubuntu:ubuntu /home/ubuntu/.kube/config
-        chmod 600 /home/ubuntu/.kube/config
-      when: 
-        - kubeadm_config.stat.exists or (kubeadm_init.stdout is defined and 'Your Kubernetes control-plane has initialized' in kubeadm_init.stdout)
-        - not kubectl_config.stat.exists
-      changed_when: true
-
-    - name: Configure kubectl for root
-      ansible.builtin.shell: |
-        mkdir -p /root/.kube
-        cp -i /etc/kubernetes/admin.conf /root/.kube/config
-      when: 
-        - kubeadm_config.stat.exists or (kubeadm_init.stdout is defined and 'Your Kubernetes control-plane has initialized' in kubeadm_init.stdout)
-        - not kubeadm_reset.changed | default(false)
-      changed_when: true
-
-    - name: Check if Calico is already installed
-      ansible.builtin.shell: |
-        kubectl --kubeconfig=/etc/kubernetes/admin.conf get daemonset -n kube-system calico-node 2>/dev/null || echo "NOT_INSTALLED"
-      register: calico_check
-      when: kubeadm_config.stat.exists
-      failed_when: false
-      changed_when: false
+        mkdir -p /home/ubuntu/.kube /root/.kube
+        cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
+        cp /etc/kubernetes/admin.conf /root/.kube/config
+        chown -R ubuntu:ubuntu /home/ubuntu/.kube
 
     - name: Install Calico network plugin
       ansible.builtin.shell: |
-        kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
-      when: 
-        - kubeadm_config.stat.exists or (kubeadm_init.stdout is defined and 'Your Kubernetes control-plane has initialized' in kubeadm_init.stdout)
-        - "'NOT_INSTALLED' in calico_check.stdout | default('NOT_INSTALLED')"
-      changed_when: true
+        kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
 
     - name: Wait for Calico to be ready
       ansible.builtin.pause:
         seconds: 60
-      when: 
-        - kubeadm_config.stat.exists or (kubeadm_init.stdout is defined and 'Your Kubernetes control-plane has initialized' in kubeadm_init.stdout)
 
-    - name: Check if join command file exists
-      ansible.builtin.stat:
-        path: /home/ubuntu/worker-join-command.sh
-      register: join_command_file_stat
-      failed_when: false
-
-    - name: Generate join command (always ensure it exists if cluster exists)
+    - name: Generate join command
       ansible.builtin.shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
         kubeadm token create --print-join-command > /home/ubuntu/worker-join-command.sh
         chmod 755 /home/ubuntu/worker-join-command.sh
-        chown ubuntu:ubuntu /home/ubuntu/worker-join-command.sh
-      when: 
-        - kubeadm_config.stat.exists
-        - not join_command_file_stat.stat.exists
-      register: join_command_file
-      changed_when: true
-      failed_when: false
-
-    - name: Read join command file
-      ansible.builtin.slurp:
-        src: /home/ubuntu/worker-join-command.sh
-      register: join_command_content
-      when: kubeadm_config.stat.exists
-      failed_when: false
-      changed_when: false
-
-    - name: Check if join command file is empty or missing
-      ansible.builtin.stat:
-        path: /home/ubuntu/worker-join-command.sh
-      register: join_file_check
-      when: kubeadm_config.stat.exists
-      failed_when: false
-
-    - name: Check if join command file has valid content
-      ansible.builtin.shell: |
-        if [ -f /home/ubuntu/worker-join-command.sh ]; then
-          FILE_SIZE=$(wc -c < /home/ubuntu/worker-join-command.sh)
-          if [ "$FILE_SIZE" -eq 0 ]; then
-            echo "EMPTY"
-          elif grep -q "^kubeadm join" /home/ubuntu/worker-join-command.sh && ! grep -qi "error" /home/ubuntu/worker-join-command.sh; then
-            echo "VALID"
-          else
-            echo "INVALID"
-          fi
-        else
-          echo "MISSING"
-        fi
-      when: kubeadm_config.stat.exists
-      register: join_file_validation
-      failed_when: false
-      changed_when: false
-
-    - name: Generate join command if file is missing or empty
-      ansible.builtin.shell: |
-        # Use kubeconfig to authenticate with API server
-        export KUBECONFIG=/etc/kubernetes/admin.conf
-        kubeadm token create --print-join-command > /home/ubuntu/worker-join-command.sh 2>&1
-        EXIT_CODE=$?
-        if [ $EXIT_CODE -eq 0 ] && [ -s /home/ubuntu/worker-join-command.sh ] && grep -q "kubeadm join" /home/ubuntu/worker-join-command.sh; then
-          chmod 755 /home/ubuntu/worker-join-command.sh
-          chown ubuntu:ubuntu /home/ubuntu/worker-join-command.sh
-          echo "SUCCESS: Join command generated"
-        else
-          echo "ERROR: Failed to generate join command (exit code: $EXIT_CODE)" >&2
-          cat /home/ubuntu/worker-join-command.sh >&2 || true
-          rm -f /home/ubuntu/worker-join-command.sh
-          exit 1
-        fi
-      when: 
-        - kubeadm_config.stat.exists
-        - join_file_validation.stdout is not defined or 
-          join_file_validation.stdout in ['MISSING', 'EMPTY', 'INVALID']
-      register: join_command_file
-      changed_when: true
-      failed_when: false
-
-    - name: Re-read join command file after generation
-      ansible.builtin.slurp:
-        src: /home/ubuntu/worker-join-command.sh
-      register: join_command_content
-      when: 
-        - kubeadm_config.stat.exists
-        - join_command_file.changed | default(false)
-      until: join_command_content.content is defined and join_command_content.content | length > 0
-      retries: 5
-      delay: 2
-      failed_when: false
-
-    - name: Set join command fact
-      ansible.builtin.set_fact:
-        kubeadm_join_command: "{{ join_command_content.content | b64decode | trim }}"
-      when: 
-        - kubeadm_config.stat.exists
-        - join_command_content is defined
-        - join_command_content.content is defined
-        - join_command_content.content | length > 0
 
 - name: Install Kubernetes Worker Nodes
   hosts: myhotel_ec2[1:]
@@ -420,107 +167,6 @@
     ansible_user: ubuntu
 
   tasks:
-
-    - name: Wait a moment for control plane to be fully ready
-      ansible.builtin.pause:
-        seconds: 10
-
-    - name: Check if join command file exists on control plane
-      ansible.builtin.stat:
-        path: /home/ubuntu/worker-join-command.sh
-      delegate_to: "{{ groups['myhotel_ec2'][0] }}"
-      register: join_file_on_controller
-      failed_when: false
-
-    - name: Get file content and size to check if it's valid
-      ansible.builtin.shell: |
-        if [ -f /home/ubuntu/worker-join-command.sh ]; then
-          FILE_SIZE=$(wc -c < /home/ubuntu/worker-join-command.sh)
-          FILE_CONTENT=$(cat /home/ubuntu/worker-join-command.sh | grep -q "kubeadm join" && echo "VALID" || echo "INVALID")
-          echo "SIZE:${FILE_SIZE}:CONTENT:${FILE_CONTENT}"
-        else
-          echo "SIZE:0:CONTENT:MISSING"
-        fi
-      delegate_to: "{{ groups['myhotel_ec2'][0] }}"
-      register: file_check_result
-      failed_when: false
-      changed_when: false
-
-    - name: Set flag to regenerate join command
-      ansible.builtin.set_fact:
-        need_to_generate_join: >-
-          {{ not join_file_on_controller.stat.exists or
-             (file_check_result.stdout is not defined) or
-             (file_check_result.stdout is defined and 
-              (file_check_result.stdout | regex_search('SIZE:0:') or
-               file_check_result.stdout | regex_search(':CONTENT:(INVALID|MISSING)'))) }}
-
-    - name: Generate join command on control plane if missing or empty
-      ansible.builtin.shell: |
-        # Use kubeconfig to authenticate with API server
-        export KUBECONFIG=/etc/kubernetes/admin.conf
-        kubeadm token create --print-join-command > /home/ubuntu/worker-join-command.sh 2>&1
-        EXIT_CODE=$?
-        if [ $EXIT_CODE -eq 0 ] && [ -s /home/ubuntu/worker-join-command.sh ] && grep -q "kubeadm join" /home/ubuntu/worker-join-command.sh; then
-          chmod 755 /home/ubuntu/worker-join-command.sh
-          chown ubuntu:ubuntu /home/ubuntu/worker-join-command.sh
-          echo "SUCCESS: Join command generated"
-        else
-          echo "ERROR: Failed to generate join command (exit code: $EXIT_CODE)" >&2
-          cat /home/ubuntu/worker-join-command.sh >&2 || true
-          rm -f /home/ubuntu/worker-join-command.sh
-          exit 1
-        fi
-      delegate_to: "{{ groups['myhotel_ec2'][0] }}"
-      when: need_to_generate_join | bool
-      register: generate_join_cmd
-      changed_when: true
-      failed_when: false
-
-    - name: Wait a moment for file to be written
-      ansible.builtin.pause:
-        seconds: 2
-      when: generate_join_cmd.changed | default(false)
-
-    - name: Get join command from controller
-      ansible.builtin.slurp:
-        src: /home/ubuntu/worker-join-command.sh
-      delegate_to: "{{ groups['myhotel_ec2'][0] }}"
-      register: join_command_content
-      until: join_command_content.content is defined and join_command_content.content | length > 0
-      retries: 15
-      delay: 2
-      failed_when: false
-
-    - name: Validate join command was retrieved
-      ansible.builtin.assert:
-        that:
-          - join_command_content.content is defined
-          - join_command_content.content | length > 0
-        fail_msg: |
-          Failed to retrieve join command from control plane.
-          Control plane host: {{ groups['myhotel_ec2'][0] }}
-          File exists: {{ join_file_on_controller.stat.exists | default('unknown') }}
-          File size: {{ file_size_check.stdout | default('unknown') }} bytes
-          Content defined: {{ join_command_content.content is defined }}
-          Please run manually on control plane:
-          kubeadm token create --print-join-command > /home/ubuntu/worker-join-command.sh
-
-    - name: Validate join command doesn't contain errors
-      ansible.builtin.assert:
-        that:
-          - join_command_content.content is defined
-          - join_command_content.content | length > 0
-          - "'error' not in (join_command_content.content | b64decode | lower)"
-          - "'kubeadm join' in (join_command_content.content | b64decode | lower)"
-        fail_msg: |
-          Join command contains errors or is invalid.
-          Content: {{ join_command_content.content | b64decode | trim | regex_replace('.*', '***') }}
-
-    - name: Set join command fact
-      ansible.builtin.set_fact:
-        kubeadm_join_command: "{{ join_command_content.content | b64decode | trim }}"
-
     - name: Set hostname
       ansible.builtin.hostname:
         name: "k8s-worker-{{ inventory_hostname_short }}"
@@ -529,15 +175,13 @@
       ansible.builtin.shell: |
         swapoff -a
         sed -i '/ swap / s/^/#/' /etc/fstab
-      changed_when: true
 
-    - name: Load required kernel modules
+    - name: Load kernel modules
       ansible.builtin.shell: |
         echo "overlay" > /etc/modules-load.d/k8s.conf
         echo "br_netfilter" >> /etc/modules-load.d/k8s.conf
         modprobe overlay
         modprobe br_netfilter
-      changed_when: true
 
     - name: Configure network settings
       ansible.builtin.copy:
@@ -562,63 +206,20 @@
         mkdir -p /etc/containerd
         containerd config default | tee /etc/containerd/config.toml
         sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-      changed_when: true
 
-    - name: Restart and enable containerd
+    - name: Restart containerd
       ansible.builtin.systemd:
         name: containerd
         state: restarted
         enabled: yes
-        daemon_reload: yes
 
-    - name: Get latest Kubernetes version
+    - name: Setup Kubernetes repository
       ansible.builtin.shell: |
-        curl -s --max-time 30 --retry 3 --connect-timeout 10 https://api.github.com/repos/kubernetes/kubernetes/releases/latest | grep tag_name | cut -d '"' -f 4 | cut -d 'v' -f 2 | cut -d '.' -f 1,2
-      register: kube_version
-      changed_when: false
-      failed_when: false
-
-    - name: Set KUBE_VERSION fact (with fallback)
-      ansible.builtin.set_fact:
-        kube_version: "{{ kube_version.stdout | default('1.28') }}"
-
-    - name: Create keyrings directory
-      ansible.builtin.file:
-        path: /etc/apt/keyrings
-        state: directory
-        mode: '0755'
-
-    - name: Validate Kubernetes version
-      ansible.builtin.assert:
-        that:
-          - kube_version | length > 0
-          - kube_version is match('^[0-9]+\\.[0-9]+$')
-        fail_msg: "Failed to get valid Kubernetes version. Got: {{ kube_version }}"
-      when: kube_version is defined
-
-    - name: Download Kubernetes GPG key
-      ansible.builtin.shell: |
-        curl -fsSL --max-time 60 --retry 3 --connect-timeout 10 -L \
-          https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/Release.key \
-          -o /tmp/k8s-release.key && \
-        gpg --batch --no-tty --yes --dearmor < /tmp/k8s-release.key > /etc/apt/keyrings/kubernetes-apt-keyring.gpg && \
-        rm -f /tmp/k8s-release.key
-      register: gpg_download
-      changed_when: true
-      failed_when: gpg_download.rc != 0
-      retries: 3
-      delay: 10
-
-    - name: Add Kubernetes repository
-      ansible.builtin.copy:
-        dest: /etc/apt/sources.list.d/kubernetes.list
-        content: |
-          deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/ /
-        mode: '0644'
-
-    - name: Update apt cache after adding K8s repo
-      ansible.builtin.apt:
-        update_cache: yes
+        mkdir -p /etc/apt/keyrings
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/Release.key | \
+          gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/ /" | \
+          tee /etc/apt/sources.list.d/kubernetes.list
 
     - name: Install Kubernetes components
       ansible.builtin.apt:
@@ -627,184 +228,46 @@
           - kubeadm
           - kubectl
         state: present
+        update_cache: yes
 
     - name: Hold Kubernetes packages
       ansible.builtin.shell: apt-mark hold kubelet kubeadm kubectl
       changed_when: false
 
-    - name: Wait for containerd to be fully ready
+    - name: Wait for control plane to be ready
       ansible.builtin.pause:
         seconds: 30
 
-    - name: Validate join command exists
-      ansible.builtin.assert:
-        that:
-          - kubeadm_join_command is defined
-          - kubeadm_join_command | length > 0
-        fail_msg: "kubeadm_join_command is not defined or empty. Check if control plane initialization completed successfully."
-        quiet: false
-
-    - name: Validate join command format (must not contain errors)
-      ansible.builtin.assert:
-        that:
-          - "'error' not in (kubeadm_join_command | lower)"
-          - "'failed' not in (kubeadm_join_command | lower)"
-          - "kubeadm_join_command | regex_search('^kubeadm join')"
-        fail_msg: |
-          Join command appears to be an error message, not a valid command:
-          {{ kubeadm_join_command }}
-          
-          Please check:
-          1. Control plane is initialized correctly
-          2. Run manually on control plane: export KUBECONFIG=/etc/kubernetes/admin.conf && kubeadm token create --print-join-command
-
-    - name: Display join command (for debugging)
-      ansible.builtin.debug:
-        msg: "Join command: {{ kubeadm_join_command | regex_replace('--token [^ ]+', '--token ***') }}"
-
-    - name: Get worker node hostname and IP
-      ansible.builtin.set_fact:
-        worker_node_hostname: "{{ ansible_hostname }}"
-        worker_node_ip: "{{ ansible_default_ipv4.address }}"
-
-    - name: Check if node is already part of the cluster
+    - name: Reset kubeadm if needed
       ansible.builtin.shell: |
-        export KUBECONFIG=/etc/kubernetes/admin.conf
-        NODE_NAME="{{ worker_node_hostname }}"
-        if kubectl get nodes "$NODE_NAME" 2>/dev/null | grep -q "Ready"; then
-          echo "ALREADY_JOINED"
-        else
-          echo "NOT_JOINED"
+        if [ -f /etc/kubernetes/kubelet.conf ]; then
+          kubeadm reset -f || true
         fi
+      failed_when: false
+
+    - name: Get join command from control plane
+      ansible.builtin.slurp:
+        src: /home/ubuntu/worker-join-command.sh
       delegate_to: "{{ groups['myhotel_ec2'][0] }}"
-      register: node_join_status
-      failed_when: false
-      changed_when: false
-
-    - name: Check if worker has leftover Kubernetes files
-      ansible.builtin.stat:
-        path: /etc/kubernetes/kubelet.conf
-      register: kubelet_conf_exists
-      failed_when: false
-
-    - name: Check if Kubernetes ports are in use on worker
-      ansible.builtin.shell: |
-        if netstat -tuln 2>/dev/null | grep -q ':10250 ' || \
-           ss -tuln 2>/dev/null | grep -q ':10250 '; then
-          echo "PORTS_IN_USE"
-        else
-          echo "PORTS_FREE"
-        fi
-      register: worker_port_check
-      failed_when: false
-      changed_when: false
-
-    - name: Set reset_worker_flag
-      ansible.builtin.set_fact:
-        reset_worker_flag: >-
-          {{ ('NOT_JOINED' in node_join_status.stdout) and
-             (kubelet_conf_exists.stat.exists or 'PORTS_IN_USE' in worker_port_check.stdout) }}
-
-    - name: Reset kubeadm on worker if needed
-      ansible.builtin.shell: |
-        echo "Resetting kubeadm on worker due to leftover files or port conflicts..."
-        kubeadm reset -f || true
-        systemctl stop kubelet 2>/dev/null || true
-        rm -rf /etc/cni/net.d
-        rm -rf /var/lib/etcd
-        rm -rf /etc/kubernetes
-        rm -rf /var/lib/kubelet
-        iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X || true
-        ipvsadm -C || true
-        # Kill any processes using Kubernetes ports
-        fuser -k 10250/tcp 2>/dev/null || true
-        sleep 3
-      when: reset_worker_flag | bool
-      register: worker_reset
-      changed_when: true
+      register: join_command_content
+      until: join_command_content.content is defined and join_command_content.content | length > 0
+      retries: 10
+      delay: 5
 
     - name: Join node to cluster
-      ansible.builtin.shell: "{{ kubeadm_join_command }}"
-      async: 900  # Allow up to 15 minutes for join to complete
-      poll: 10    # Poll every 10 seconds to check status
-      register: join_result
-      timeout: 900  # 15 minutes total timeout
-      when: node_join_status.stdout is defined and 'NOT_JOINED' in node_join_status.stdout
-      changed_when: false
+      ansible.builtin.shell: "{{ join_command_content.content | b64decode | trim }}"
 
-    - name: Wait for join to complete
-      ansible.builtin.async_status:
-        jid: "{{ join_result.ansible_job_id }}"
-      register: join_job_result
-      until: join_job_result.finished
-      retries: 90  # 90 retries * 10 seconds = 15 minutes max
-      delay: 10
-      failed_when: false
-      when: join_result is defined and join_result.ansible_job_id is defined
-
-    - name: Display join result
-      ansible.builtin.debug:
-        msg:
-          - "Join job finished: {{ join_job_result.finished }}"
-          - "Result: {{ join_job_result | to_nice_json }}"
-      when: join_job_result is defined
-
-    - name: Wait for node to appear in cluster (on control plane)
+    - name: Verify node joined
       ansible.builtin.shell: |
         export KUBECONFIG=/etc/kubernetes/admin.conf
-        WORKER_IP="{{ worker_node_ip }}"
-        WORKER_HOSTNAME="{{ worker_node_hostname }}"
-        
-        for i in {1..30}; do
-          # Check by IP or hostname
-          if kubectl get nodes 2>/dev/null | grep -E "($WORKER_HOSTNAME|$WORKER_IP)" | grep -q "Ready"; then
-            echo "SUCCESS: Node found and Ready"
-            kubectl get nodes | grep -E "($WORKER_HOSTNAME|$WORKER_IP)"
-            exit 0
-          elif kubectl get nodes 2>/dev/null | grep -qE "($WORKER_HOSTNAME|$WORKER_IP)"; then
-            echo "WAITING: Node found but not Ready yet (attempt $i/30)"
-            kubectl get nodes | grep -E "($WORKER_HOSTNAME|$WORKER_IP)" || true
-          else
-            echo "WAITING: Node not found yet (attempt $i/30)"
-          fi
-          sleep 5
-        done
-        echo "TIMEOUT: Node did not appear as Ready after 150 seconds"
-        echo "Current nodes:"
-        kubectl get nodes || true
-        exit 1
+        sleep 10
+        kubectl get nodes | grep -q "{{ ansible_hostname }}.*Ready" && echo "READY" || echo "NOT_READY"
       delegate_to: "{{ groups['myhotel_ec2'][0] }}"
-      register: node_ready_check
+      register: node_status
+      until: "'READY' in node_status.stdout"
+      retries: 30
+      delay: 10
       failed_when: false
-      changed_when: false
-      when: node_join_status.stdout is defined and ('NOT_JOINED' in node_join_status.stdout or join_job_result is defined)
-
-    - name: Set node verification result
-      ansible.builtin.set_fact:
-        node_verification_passed: >-
-          {{ (node_join_status.stdout is defined and 'ALREADY_JOINED' in node_join_status.stdout) or
-             (join_job_result is defined and join_job_result.finished | bool and
-              node_ready_check.stdout is defined and
-              ('SUCCESS: Node found and Ready' in node_ready_check.stdout or 'Ready' in node_ready_check.stdout)) }}
-
-    - name: Verify node joined successfully
-      ansible.builtin.assert:
-        that:
-          - node_verification_passed | bool
-        fail_msg: |
-          Failed to verify that node {{ inventory_hostname }} ({{ worker_node_hostname }}) joined the cluster.
-          Join status: {{ node_join_status.stdout | default('unknown') }}
-          Join job finished: {{ join_job_result.finished | default('N/A') if join_job_result is defined else 'N/A' }}
-          Node ready check output: {{ node_ready_check.stdout | default('No output') }}
-          Worker IP: {{ worker_node_ip }}
-          Worker Hostname: {{ worker_node_hostname }}
-          Please check:
-          1. Network connectivity between worker and control plane
-          2. Control plane is fully initialized
-          3. Firewall rules allow communication on required ports
-          4. Join command token is still valid (tokens expire after 24 hours)
-          5. Check manually on control plane: export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl get nodes
-        success_msg: "Node {{ inventory_hostname }} ({{ worker_node_hostname }}) successfully joined the cluster and is Ready"
 
 - name: Install Helm on Control Plane
   hosts: myhotel_ec2[0]
@@ -813,92 +276,34 @@
     ansible_user: ubuntu
 
   tasks:
-
-    - name: Download Helm installation script
-      ansible.builtin.get_url:
-        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-        dest: /tmp/get-helm-3.sh
-        mode: '0755'
-
     - name: Install Helm
-      ansible.builtin.shell: /tmp/get-helm-3.sh
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
       args:
         creates: /usr/local/bin/helm
-      changed_when: true
-
-    - name: Verify Helm installation
-      ansible.builtin.command: helm version
-      register: helm_version
-      changed_when: false
-
-    - name: Display Helm version
-      ansible.builtin.debug:
-        msg: "Helm installed: {{ helm_version.stdout }}"
 
     - name: Wait for all nodes to be ready
       ansible.builtin.shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
         kubectl wait --for=condition=Ready nodes --all --timeout=300s
-      register: nodes_ready
-      until: nodes_ready.rc == 0
-      retries: 10
-      delay: 30
-      changed_when: false
 
-    - name: Enable and start SSM agent (snap)
-      ansible.builtin.shell: systemctl enable --now snap.amazon-ssm-agent.amazon-ssm-agent.service || true
-
-- name: Deploy Helm Chart (Optional - comment out if deploying manually)
+- name: Deploy Helm Chart (Optional)
   hosts: myhotel_ec2[0]
   become: yes
   vars:
     ansible_user: ubuntu
-    deploy_helm_chart: false  # Set to true to deploy automatically
+    deploy_helm_chart: false
 
   tasks:
-
-    - name: Check if Helm chart directory exists locally
-      ansible.builtin.stat:
-        path: "{{ playbook_dir }}/helm-charts/myhotel-app"
-      register: helm_chart_dir
-      delegate_to: localhost
-      changed_when: false
-
-    - name: Copy Helm chart to control plane
+    - name: Copy Helm chart
       ansible.builtin.copy:
         src: "{{ playbook_dir }}/helm-charts/myhotel-app"
         dest: /home/ubuntu/helm-charts/myhotel-app
         mode: preserve
-      when: 
-        - helm_chart_dir.stat.exists
-        - deploy_helm_chart | bool
-      changed_when: true
+      when: deploy_helm_chart | bool
 
     - name: Deploy Helm chart
       ansible.builtin.shell: |
         cd /home/ubuntu/helm-charts
         helm install myhotel-app ./myhotel-app --wait --timeout 10m
-      register: helm_install
-      when: 
-        - helm_chart_dir.stat.exists
-        - deploy_helm_chart | bool
-      changed_when: "'STATUS: deployed' in helm_install.stdout"
-
-    - name: Display deployment status
-      ansible.builtin.debug:
-        msg: "Helm chart deployed. Run 'kubectl get svc myhotel-app' to get the LoadBalancer endpoint."
-      when: 
-        - helm_chart_dir.stat.exists
-        - deploy_helm_chart | bool
-        - helm_install.changed
-
-    - name: Display manual deployment instructions
-      ansible.builtin.debug:
-        msg: |
-          To deploy the Helm chart manually:
-          1. Copy the helm-charts directory to the control plane node
-          2. SSH to the control plane: ssh ubuntu@<control-plane-ip>
-          3. Run: helm install myhotel-app ./helm-charts/myhotel-app
-          4. Check status: kubectl get pods -w
-          5. Get LoadBalancer endpoint: kubectl get svc myhotel-app
-      when: 
-        - not deploy_helm_chart | bool
+      when: deploy_helm_chart | bool
