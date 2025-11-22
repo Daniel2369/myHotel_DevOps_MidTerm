@@ -124,6 +124,11 @@
         state: present
         update_cache: yes
 
+    - name: Install NFS client utilities
+      ansible.builtin.apt:
+        name: nfs-common
+        state: present
+
     - name: Hold Kubernetes packages
       ansible.builtin.shell: apt-mark hold kubelet kubeadm kubectl
       changed_when: false
@@ -231,6 +236,11 @@
         state: present
         update_cache: yes
 
+    - name: Install NFS client utilities
+      ansible.builtin.apt:
+        name: nfs-common
+        state: present
+
     - name: Hold Kubernetes packages
       ansible.builtin.shell: apt-mark hold kubelet kubeadm kubectl
       changed_when: false
@@ -270,41 +280,3 @@
       delay: 10
       failed_when: false
 
-- name: Install Helm on Control Plane
-  hosts: myhotel_ec2[0]
-  become: yes
-  vars:
-    ansible_user: ubuntu
-
-  tasks:
-    - name: Install Helm
-      ansible.builtin.shell: |
-        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      args:
-        creates: /usr/local/bin/helm
-
-    - name: Wait for all nodes to be ready
-      ansible.builtin.shell: |
-        export KUBECONFIG=/etc/kubernetes/admin.conf
-        kubectl wait --for=condition=Ready nodes --all --timeout=300s
-
-- name: Deploy Helm Chart (Optional)
-  hosts: myhotel_ec2[0]
-  become: yes
-  vars:
-    ansible_user: ubuntu
-    deploy_helm_chart: false
-
-  tasks:
-    - name: Copy Helm chart
-      ansible.builtin.copy:
-        src: "{{ playbook_dir }}/helm-charts/myhotel-app"
-        dest: /home/ubuntu/helm-charts/myhotel-app
-        mode: preserve
-      when: deploy_helm_chart | bool
-
-    - name: Deploy Helm chart
-      ansible.builtin.shell: |
-        cd /home/ubuntu/helm-charts
-        helm install myhotel-app ./myhotel-app --wait --timeout 10m
-      when: deploy_helm_chart | bool

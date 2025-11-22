@@ -35,22 +35,22 @@ spec:
         env:
         - name: SHARED_DIRECTORY
           value: {{ .Values.nfsServer.serverPath }}
+        - name: PERMITTED
+          value: "*"
         readinessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - "rpcinfo -p localhost | grep nfs > /dev/null"
-          initialDelaySeconds: 5
+          tcpSocket:
+            port: 2049
+          initialDelaySeconds: 20
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
         livenessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - "rpcinfo -p localhost | grep nfs > /dev/null"
-          initialDelaySeconds: 10
+          tcpSocket:
+            port: 2049
+          initialDelaySeconds: 30
           periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
       volumes:
       - name: nfs-storage
         hostPath:

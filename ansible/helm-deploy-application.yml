@@ -1,0 +1,194 @@
+---
+- name: Install Helm on Control Plane
+  hosts: myhotel_ec2[0]
+  become: yes
+  vars:
+    ansible_user: ubuntu
+
+  tasks:
+    - name: Install Helm
+      ansible.builtin.shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      args:
+        creates: /usr/local/bin/helm
+
+    - name: Verify Helm installation
+      ansible.builtin.command: helm version
+      register: helm_version
+      changed_when: false
+
+    - name: Display Helm version
+      ansible.builtin.debug:
+        msg: "Helm installed: {{ helm_version.stdout }}"
+
+    - name: Wait for all nodes to be ready
+      ansible.builtin.shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        kubectl wait --for=condition=Ready nodes --all --timeout=300s
+
+- name: Deploy Helm Chart
+  hosts: myhotel_ec2[0]
+  become: yes
+  vars:
+    ansible_user: ubuntu
+    deploy_helm_chart: true
+    helm_release_name: "myhotel-app-v2"
+
+  tasks:
+    - name: Check if Helm chart exists on Ansible server (localhost)
+      ansible.builtin.stat:
+        path: /home/ubuntu/helm-charts/myhotel-app/Chart.yaml
+      register: helm_chart_on_ansible
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Display Ansible server chart status
+      ansible.builtin.debug:
+        msg: |
+          Chart.yaml exists on Ansible server: {{ helm_chart_on_ansible.stat.exists | default(false) }}
+          Path checked: /home/ubuntu/helm-charts/myhotel-app/Chart.yaml
+
+    - name: Check if Helm chart already exists on control plane
+      ansible.builtin.stat:
+        path: /home/ubuntu/helm-charts/myhotel-app/Chart.yaml
+      register: helm_chart_on_control_plane
+      changed_when: false
+
+    - name: Display control plane chart status
+      ansible.builtin.debug:
+        msg: |
+          Chart.yaml exists on Ansible server: {{ helm_chart_on_ansible.stat.exists | default(false) }}
+          Chart.yaml exists on control plane: {{ helm_chart_on_control_plane.stat.exists | default(false) }}
+          Will copy from Ansible server to control plane if files exist on Ansible server
+
+    - name: Ensure helm-charts directory exists on control plane
+      ansible.builtin.file:
+        path: /home/ubuntu/helm-charts
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+      when: helm_chart_on_ansible.stat.exists
+
+    - name: Remove existing myhotel-app directory on control plane before copying
+      ansible.builtin.file:
+        path: /home/ubuntu/helm-charts/myhotel-app
+        state: absent
+      when: helm_chart_on_ansible.stat.exists
+      ignore_errors: true
+
+    - name: Get SSH key path from inventory
+      ansible.builtin.set_fact:
+        ssh_key_path: "{{ ansible_ssh_private_key_file | default('/home/ubuntu/labsuser.pem') }}"
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Copy Helm chart from Ansible server to control plane using tar+ssh
+      ansible.builtin.shell: |
+        cd /home/ubuntu/helm-charts
+        tar czf - myhotel-app | ssh \
+          -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          -i {{ ssh_key_path }} \
+          ubuntu@{{ ansible_host }} \
+          "mkdir -p /home/ubuntu/helm-charts && cd /home/ubuntu/helm-charts && tar xzf - && chown -R ubuntu:ubuntu /home/ubuntu/helm-charts/myhotel-app"
+      delegate_to: localhost
+      when: helm_chart_on_ansible.stat.exists
+      register: copy_result
+      changed_when: true
+      failed_when: copy_result.rc != 0
+
+    - name: Display copy result
+      ansible.builtin.debug:
+        msg: |
+          Copy completed: {{ 'SUCCESS' if copy_result.rc == 0 else 'FAILED' }}
+          Return code: {{ copy_result.rc | default('N/A') }}
+      when: helm_chart_on_ansible.stat.exists and copy_result is defined
+
+    - name: Display copy result
+      ansible.builtin.debug:
+        msg: |
+          Copy result: {{ copy_result.rc }}
+          {{ copy_result.stdout }}
+          {{ copy_result.stderr }}
+      when: helm_chart_on_ansible.stat.exists and copy_result is defined
+
+    - name: Verify Chart.yaml exists on control plane after copy
+      ansible.builtin.stat:
+        path: /home/ubuntu/helm-charts/myhotel-app/Chart.yaml
+      register: chart_yaml_final_check
+      changed_when: false
+
+    - name: List files in helm-charts directory on control plane
+      ansible.builtin.shell: |
+        ls -la /home/ubuntu/helm-charts/myhotel-app/ 2>/dev/null || echo "Directory not found"
+      register: control_plane_files
+      changed_when: false
+      failed_when: false
+
+    - name: Display control plane files
+      ansible.builtin.debug:
+        msg: "Files on control plane: {{ control_plane_files.stdout }}"
+
+    - name: Check if Helm release already exists
+      ansible.builtin.shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        if helm list | grep -q "^{{ helm_release_name }}"; then
+          echo "EXISTS"
+        else
+          echo "NOT_FOUND"
+        fi
+      register: helm_release_status
+      failed_when: false
+      changed_when: false
+
+    - name: Display Helm release status
+      ansible.builtin.debug:
+        msg: "Helm release status: {{ helm_release_status.stdout }}"
+
+    - name: Fail if Chart.yaml not found
+      ansible.builtin.assert:
+        that:
+          - chart_yaml_final_check.stat.exists or helm_chart_on_control_plane.stat.exists
+        fail_msg: |
+          Helm chart Chart.yaml file not found on control plane at:
+          /home/ubuntu/helm-charts/myhotel-app/Chart.yaml
+          
+          Please ensure the helm-charts directory is copied to the Ansible server first using:
+          ./terraform/main/scripts/scp_helm_charts.sh
+          
+          Then verify files exist on Ansible server:
+          ls -la /home/ubuntu/helm-charts/myhotel-app/
+        success_msg: "Helm chart Chart.yaml found on control plane"
+
+    - name: Upgrade Helm chart if release exists
+      ansible.builtin.shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        cd /home/ubuntu/helm-charts
+        helm upgrade {{ helm_release_name }} ./myhotel-app --wait --timeout 10m
+      when: 
+        - deploy_helm_chart | bool
+        - chart_yaml_final_check.stat.exists or helm_chart_on_control_plane.stat.exists
+        - helm_release_status.stdout == "EXISTS"
+      register: helm_upgrade
+
+    - name: Install Helm chart if release does not exist
+      ansible.builtin.shell: |
+        export KUBECONFIG=/etc/kubernetes/admin.conf
+        cd /home/ubuntu/helm-charts
+        helm install {{ helm_release_name }} ./myhotel-app --wait --timeout 10m
+      when: 
+        - deploy_helm_chart | bool
+        - chart_yaml_final_check.stat.exists or helm_chart_on_control_plane.stat.exists
+        - helm_release_status.stdout == "NOT_FOUND"
+      register: helm_install
+
+    - name: Display deployment status
+      ansible.builtin.debug:
+        msg: |
+          Helm chart deployment completed.
+          To get the LoadBalancer endpoint, run on control plane:
+          kubectl get svc myhotel-app -n default
+      when: 
+        - deploy_helm_chart | bool
+        - (helm_install is defined and helm_install.changed) or (helm_upgrade is defined and helm_upgrade.changed)

@@ -192,15 +192,13 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        b. terraform init -reconfigure
        c. terraform plan -out plan
        d. terraform apply plan
-    6. Generate ansible_vars.json (and fill credentials securely): 
+    6. Generate ansible_vars.json:
        a. ./scripts/generate-ansible-vars.sh
-       b. cd ../
-       c. terraform output copy lb and ec2 ip and paste into the json file created inside /scripts
-       d. then edit ansible_vars.json to add AWS credentials (or put them on the Ansible host).
     7. Copy files to the Ansible server
        Note: Copy the certificate from the AWS lab's UI and copy it into the project directory .pem file and save
        a. chmod 400 labsuser.pem
-       b. ./scp_data.sh
+       b. Take 3 k8s private vm's from EC2 service and replace them inside the inventory.ini file, private-ec2-instance must be the first one.
+       c. ./scp_data.sh
     8. Ansible part:
        ssh -i /terraform/main/labsuser.pem ubuntu@<ANSIBLE_IP>
 
@@ -219,29 +217,25 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
 
          cat <<EOF > /home/ubuntu/.aws/credentials
          [default]
-         aws_access_key_id = $(jq -r '.aws_access_key_id' /home/ubuntu/ansible_vars.json)
+         aws_access_key_id     = $(jq -r '.aws_access_key_id' /home/ubuntu/ansible_vars.json)
          aws_secret_access_key = $(jq -r '.aws_secret_access_key' /home/ubuntu/ansible_vars.json)
-         aws_session_token = $(jq -r '.aws_session_token' /home/ubuntu/ansible_vars.json)
+         aws_session_token     = $(jq -r '.aws_session_token' /home/ubuntu/ansible_vars.json)
          EOF
-
         
         chmod 600 /home/ubuntu/.aws/credentials # Set permissions to read the file
 
         cat /home/ubuntu/.aws/credentials # verify
         
-        # Update inventory.ini file with the private vm's private ip's
-        Take the IP's from AWS console and edit the file using vi
-        
-        # Run playbook
-        ansible-playbook -i inventory.ini ansible-playbook.yml --extra-vars "@ansible_vars.json" --private-key ./labsuser.pem -u ubuntu
-        
-        # Check container runs
-        ssh -i labsuser.pem ubuntu@private-ip-vm-1 # can get from inventory.ini
-        docker ps
-        ssh private-ip-vm-2 
-        docker ps
+        # Install K8s cluster:
+        ansible-playbook -i inventory.ini install-k8s-cluster.yml --extra-vars "@ansible_vars.json" --private-key ./labsuser.pem -u ubuntu
+         * After finish check VERIFY_K8S.md for tests of the control plane.
+
+       # Install Helm and deploy chart and application:
+         * Inside the host run /terraform/main/scripts/scp_helm_chards.sh
+         * Inside the Ansible server run: ansible-playbook -i inventory.ini helm-deploy-application.yml
+
+       
 
     9. Check in AWS console EC2 → Target group machine health
     10. Load balancer → Take ELB domain and run in HostOS’s browser check the application is loaded.
-    11. Delete ECR container manually, Run /scripts/destroy-infra.sh - to clean the environment.
    ```

@@ -15,6 +15,19 @@ spec:
         {{- include "myhotel-app.selectorLabels" . | nindent 8 }}
     spec:
       initContainers:
+      - name: wait-for-nfs-server
+        image: busybox:latest
+        command: ['sh', '-c']
+        args:
+          - |
+            echo "Waiting for NFS server to be ready..."
+            NFS_SERVICE="{{ include "myhotel-app.fullname" . }}-nfs-server"
+            until nc -z $NFS_SERVICE 2049 && nc -z $NFS_SERVICE 111 && nc -z $NFS_SERVICE 20048; do
+              echo "NFS server not ready yet, waiting..."
+              sleep 2
+            done
+            echo "NFS server is ready!"
+            sleep 5
       {{- if .Values.hotelRoomsJson.enabled }}
       - name: copy-hotel-rooms-json
         image: busybox:latest
