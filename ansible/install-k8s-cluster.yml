@@ -124,11 +124,6 @@
         state: present
         update_cache: yes
 
-    - name: Install NFS client utilities
-      ansible.builtin.apt:
-        name: nfs-common
-        state: present
-
     - name: Hold Kubernetes packages
       ansible.builtin.shell: apt-mark hold kubelet kubeadm kubectl
       changed_when: false
@@ -235,11 +230,6 @@
           - kubectl
         state: present
         update_cache: yes
-
-    - name: Install NFS client utilities
-      ansible.builtin.apt:
-        name: nfs-common
-        state: present
 
     - name: Hold Kubernetes packages
       ansible.builtin.shell: apt-mark hold kubelet kubeadm kubectl

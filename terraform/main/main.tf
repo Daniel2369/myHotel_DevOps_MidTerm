@@ -89,7 +89,7 @@ module "alb_asg" {
 
   user_data = ""
 }
- # user_data = templatefile("${path.module}/ec2-userdata.sh", {
+ # user_data = templatefile("${path.module}/scripts/ec2-userdata.sh", {
  #  ecr_repo_url = module.myHotel_APP_ECR.ecr_repo_url
  #  })
  #}
@@ -134,7 +134,7 @@ resource "aws_instance" "hotel_ec2" {
   tags = {
     Name = "ansible-server"
   }
-  user_data = file("${path.module}/ansible-server.sh")
+  user_data = file("${path.module}/scripts/ansible-server.sh")
 }
 
 # Elastic IP for Ansible server to keep a static public address

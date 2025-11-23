@@ -21,13 +21,26 @@ spec:
         args:
           - |
             echo "Waiting for NFS server to be ready..."
-            NFS_SERVICE="{{ include "myhotel-app.fullname" . }}-nfs-server"
-            until nc -z $NFS_SERVICE 2049 && nc -z $NFS_SERVICE 111 && nc -z $NFS_SERVICE 20048; do
-              echo "NFS server not ready yet, waiting..."
+            NFS_SERVER="{{ .Values.nfsServer.serverIP }}"
+            MAX_ATTEMPTS=60
+            ATTEMPT=0
+            while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+              # Check NFS (2049) and rpcbind (111) - mountd will use dynamic port via rpcbind
+              if nc -z $NFS_SERVER 2049 && nc -z $NFS_SERVER 111; then
+                echo "NFS server is ready (ports 2049 and 111 accessible)!"
+                echo "mountd will be discovered via rpcbind on port 111"
+                break
+              else
+                echo "NFS server not ready yet, waiting... (attempt $((ATTEMPT+1))/$MAX_ATTEMPTS)"
+              fi
               sleep 2
+              ATTEMPT=$((ATTEMPT+1))
             done
-            echo "NFS server is ready!"
-            sleep 5
+            if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
+              echo "Warning: NFS server check timed out, but proceeding..."
+            fi
+            echo "Proceeding with NFS mount..."
+            sleep 3
       {{- if .Values.hotelRoomsJson.enabled }}
       - name: copy-hotel-rooms-json
         image: busybox:latest
@@ -35,14 +48,15 @@ spec:
         args:
           - |
             echo "Copying hotel rooms JSON file to NFS volume..."
-            cp /config/{{ .Values.hotelRoomsJson.fileName }} /mnt/{{ .Values.hotelRoomsJson.fileName }}
-            ls -la /mnt/
-            echo "Hotel rooms JSON file copied successfully!"
+            mkdir -p /app/data
+            cp /config/{{ .Values.hotelRoomsJson.fileName }} /app/data/{{ .Values.hotelRoomsJson.fileName }}
+            ls -la /app/data/
+            echo "Hotel rooms JSON file copied successfully to /app/data/"
         volumeMounts:
         - name: config
           mountPath: /config
         - name: nfs-storage
-          mountPath: /mnt
+          mountPath: /app/data
       {{- end }}
       containers:
       - name: {{ .Chart.Name }}

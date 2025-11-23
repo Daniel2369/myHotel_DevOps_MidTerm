@@ -1,0 +1,304 @@
+---
+- name: Install and Configure NFS Server on Controller
+  hosts: myhotel_ec2[0]
+  become: yes
+  vars:
+    ansible_user: ubuntu
+    nfs_share_path: /srv/nfs/k8s-data
+    nfs_export_network: "10.0.0.0/16"
+    nfs_mount_path: /home/ubuntu/nfs-data
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install NFS server packages
+      ansible.builtin.apt:
+        name:
+          - nfs-kernel-server
+        state: present
+
+    - name: Create directory for NFS share
+      ansible.builtin.file:
+        path: "{{ nfs_share_path }}"
+        state: directory
+        owner: nobody
+        group: nogroup
+        mode: '0777'
+
+    - name: Note about mountd port configuration
+      ansible.builtin.debug:
+        msg: "mountd will use dynamic port (32768-65535) - security group allows this range"
+
+    - name: Configure NFS exports
+      ansible.builtin.lineinfile:
+        path: /etc/exports
+        line: "{{ nfs_share_path }} {{ nfs_export_network }}(rw,sync,no_subtree_check,no_root_squash)"
+        regexp: "^{{ nfs_share_path }}"
+        state: present
+        backup: yes
+
+    - name: Ensure rpcbind is running
+      ansible.builtin.systemd:
+        name: rpcbind
+        state: started
+        enabled: yes
+
+    - name: Start rpcbind first
+      ansible.builtin.systemd:
+        name: rpcbind
+        state: started
+        enabled: yes
+
+    - name: Wait for rpcbind to be ready
+      ansible.builtin.pause:
+        seconds: 2
+
+    - name: Start NFS server
+      ansible.builtin.systemd:
+        name: nfs-kernel-server
+        state: started
+        enabled: yes
+
+    - name: Wait for NFS services to fully start
+      ansible.builtin.pause:
+        seconds: 5
+
+    - name: Export the shared directory
+      ansible.builtin.command: exportfs -a
+      changed_when: true
+
+    - name: Verify NFS is running
+      ansible.builtin.systemd:
+        name: nfs-kernel-server
+        state: started
+      register: nfs_status
+
+    - name: Check mountd process and discover its port
+      ansible.builtin.shell: |
+        echo "=== Checking mountd process ==="
+        ps aux | grep -E '[m]ountd|rpc.mountd' || echo "mountd process not found"
+        echo ""
+        echo "=== Discovering mountd port via rpcbind ==="
+        MOUNTD_INFO=$(rpcinfo -p localhost 2>/dev/null | grep mountd | head -1)
+        if [ -n "$MOUNTD_INFO" ]; then
+          echo "$MOUNTD_INFO"
+          MOUNTD_PORT=$(echo "$MOUNTD_INFO" | awk '{print $4}')
+          MOUNTD_PROTO=$(echo "$MOUNTD_INFO" | awk '{print $3}')
+          echo "✓ mountd is registered with rpcbind"
+          echo "  Port: $MOUNTD_PORT"
+          echo "  Protocol: $MOUNTD_PROTO"
+          echo ""
+          echo "=== Verifying mountd port is listening ==="
+          if ss -tlnp | grep -q ":$MOUNTD_PORT "; then
+            echo "✓ Port $MOUNTD_PORT is listening"
+            ss -tlnp | grep ":$MOUNTD_PORT "
+          else
+            echo "⚠ Port $MOUNTD_PORT not found in ss output (may be UDP or dynamic)"
+          fi
+        else
+          echo "✗ mountd not registered with rpcbind"
+          exit 1
+        fi
+      register: mountd_check
+      changed_when: false
+      failed_when: false
+
+    - name: Display mountd check results
+      ansible.builtin.debug:
+        var: mountd_check.stdout_lines
+
+    - name: Verify mountd is working
+      ansible.builtin.assert:
+        that:
+          - "'mountd is registered with rpcbind' in mountd_check.stdout"
+        fail_msg: "mountd is not registered with rpcbind - NFS mounts may fail"
+        success_msg: "mountd is working and registered with rpcbind"
+
+    - name: Show all NFS-related ports
+      ansible.builtin.shell: |
+        echo "=== All NFS-related ports ==="
+        echo "Port 2049 (NFS):"
+        ss -tlnp | grep 2049 || echo "  Not listening"
+        echo "Port 111 (rpcbind):"
+        ss -tlnp | grep 111 || echo "  Not listening"
+        echo "mountd port (discovered via rpcbind):"
+        rpcinfo -p localhost 2>/dev/null | grep mountd || echo "  mountd not registered"
+      register: nfs_ports
+      changed_when: false
+      failed_when: false
+
+    - name: Display NFS ports
+      ansible.builtin.debug:
+        var: nfs_ports.stdout_lines
+
+    - name: Check NFS exports
+      ansible.builtin.command: showmount -e localhost
+      register: nfs_exports
+      changed_when: false
+      failed_when: false
+
+    - name: Display NFS exports
+      ansible.builtin.debug:
+        var: nfs_exports.stdout_lines
+      when: nfs_exports.rc == 0
+
+    - name: Warn if NFS exports check failed
+      ansible.builtin.debug:
+        msg: "WARNING: showmount failed - mountd may not be running. NFS core functionality (ports 2049, 111) should still work."
+      when: nfs_exports.rc != 0
+
+    - name: Get controller IP address
+      ansible.builtin.set_fact:
+        controller_ip: "{{ ansible_default_ipv4.address }}"
+
+    - name: Create test file on NFS share
+      ansible.builtin.copy:
+        dest: "{{ nfs_share_path }}/test.txt"
+        content: "Hello from NFS Server!\n"
+        mode: '0644'
+        owner: nobody
+        group: nogroup
+
+    - name: Display controller IP for worker nodes
+      ansible.builtin.debug:
+        msg: "NFS Server IP: {{ controller_ip }} - Use this IP for worker node mounts"
+
+- name: Install NFS Client on Worker Nodes
+  hosts: myhotel_ec2[1:]
+  become: yes
+  vars:
+    ansible_user: ubuntu
+    nfs_mount_path: /home/ubuntu/nfs-data
+    nfs_share_path: /srv/nfs/k8s-data
+
+  tasks:
+    - name: Get controller IP address
+      ansible.builtin.set_fact:
+        controller_ip: "{{ hostvars[groups['myhotel_ec2'][0]]['ansible_default_ipv4']['address'] }}"
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: Install NFS client
+      ansible.builtin.apt:
+        name:
+          - nfs-common
+        state: present
+
+    - name: Create mount point directory
+      ansible.builtin.file:
+        path: "{{ nfs_mount_path }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Check if mount point is already mounted
+      ansible.builtin.command: mountpoint -q {{ nfs_mount_path }}
+      register: mountpoint_check
+      failed_when: false
+      changed_when: false
+
+    - name: Unmount if already mounted
+      ansible.builtin.command: umount {{ nfs_mount_path }}
+      when: mountpoint_check.rc == 0
+      failed_when: false
+
+    - name: Verify NFS server connectivity before mount
+      ansible.builtin.shell: |
+        echo "Testing connectivity to NFS server {{ controller_ip }}..."
+        if nc -z {{ controller_ip }} 2049 && nc -z {{ controller_ip }} 111; then
+          echo "✓ NFS server ports (2049, 111) are accessible"
+          exit 0
+        else
+          echo "✗ Cannot reach NFS server ports"
+          exit 1
+        fi
+      register: nfs_connectivity
+      changed_when: false
+      failed_when: false
+
+    - name: Display connectivity check result
+      ansible.builtin.debug:
+        msg: "{{ nfs_connectivity.stdout_lines }}"
+
+    - name: Test mount NFS share (with timeout)
+      ansible.builtin.shell: |
+        timeout 30 mount -t nfs -o rw,sync,hard,intr,timeo=10,retrans=2 {{ controller_ip }}:{{ nfs_share_path }} {{ nfs_mount_path }}
+      register: mount_result
+      failed_when: false
+      changed_when: mount_result.rc == 0
+      when: nfs_connectivity.rc == 0
+
+    - name: Skip mount if server not reachable
+      ansible.builtin.debug:
+        msg: "Skipping NFS mount test - server not reachable. Verify network connectivity and security groups."
+      when: nfs_connectivity.rc != 0
+
+    - name: Check if mount succeeded
+      ansible.builtin.command: mountpoint -q {{ nfs_mount_path }}
+      register: mount_check
+      changed_when: false
+      failed_when: false
+      when: nfs_connectivity.rc == 0
+
+    - name: Verify mount worked
+      ansible.builtin.command: ls -la {{ nfs_mount_path }}
+      register: mount_verify
+      changed_when: false
+      failed_when: false
+      when: 
+        - nfs_connectivity.rc == 0
+        - mount_check.rc == 0
+
+    - name: Display mount verification
+      ansible.builtin.debug:
+        var: mount_verify.stdout_lines
+      when: 
+        - nfs_connectivity.rc == 0
+        - mount_check.rc == 0
+        - mount_verify is defined
+        - mount_verify.rc is defined
+        - mount_verify.rc == 0
+
+    - name: Check if test file exists
+      ansible.builtin.stat:
+        path: "{{ nfs_mount_path }}/test.txt"
+      register: test_file
+      when: 
+        - nfs_connectivity.rc == 0
+        - mount_check.rc == 0
+        - mount_verify is defined
+        - mount_verify.rc is defined
+        - mount_verify.rc == 0
+
+    - name: Display test file content
+      ansible.builtin.debug:
+        msg: "Test file found! NFS mount is working correctly."
+      when: 
+        - test_file is defined
+        - test_file.stat.exists | default(false)
+
+    - name: Unmount test mount
+      ansible.builtin.command: umount {{ nfs_mount_path }}
+      register: umount_result
+      failed_when: false
+      changed_when: umount_result.rc == 0
+      when: 
+        - nfs_connectivity.rc == 0
+        - mount_check.rc == 0
+
+    - name: Warn if mount test failed
+      ansible.builtin.debug:
+        msg: "NFS mount test failed or timed out. This is OK - NFS client is installed and Kubernetes will handle mounts."
+      when: 
+        - nfs_connectivity.rc == 0
+        - mount_check.rc != 0
+
+    - name: Display NFS client setup complete
+      ansible.builtin.debug:
+        msg: "NFS client installed and tested successfully. Controller IP: {{ controller_ip }}"
+

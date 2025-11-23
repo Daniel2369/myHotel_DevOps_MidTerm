@@ -13,7 +13,12 @@ spec:
     {{- end }}
   persistentVolumeReclaimPolicy: Retain
   storageClassName: ""
+  mountOptions:
+    - nfsvers=4
+    - proto=tcp
+    - timeo=600
+    - retrans=2
   nfs:
-    server: {{ include "myhotel-app.fullname" . }}-nfs-server
-    path: {{ .Values.nfsServer.serverPath }}
+    server: {{ .Values.nfsServer.serverIP | quote }}
+    path: {{ .Values.nfsServer.serverPath | quote }}
 

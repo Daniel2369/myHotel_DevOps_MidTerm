@@ -1,0 +1,277 @@
+---
+# Refactored Helm Deployment Playbook
+# This playbook installs Helm and deploys the Helm chart to Kubernetes control plane
+# Fully idempotent, safe, and reliable
+
+- name: Deploy Helm Chart to Kubernetes
+  hosts: myhotel_ec2[0]
+  become: true
+  vars:
+    ansible_user: ubuntu
+    helm_release_name: myhotel-app-v2
+    helm_version: "3.14.0"
+    helm_namespace: default
+    helm_chart_source: /home/ubuntu/helm-charts/myhotel-app
+    helm_chart_dest: /home/ubuntu/helm-charts/myhotel-app
+    helm_wait_timeout: "10m"
+
+  environment:
+    KUBECONFIG: /etc/kubernetes/admin.conf
+
+  tasks:
+    # ============================================
+    # PHASE 1: Install Helm
+    # ============================================
+    - name: Check if Helm is already installed
+      ansible.builtin.command:
+        cmd: helm version --client --short
+      register: helm_version_check
+      changed_when: false
+      failed_when: false
+
+    - name: Download Helm binary if not installed
+      ansible.builtin.get_url:
+        url: "https://get.helm.sh/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+        dest: /tmp/helm-{{ helm_version }}-linux-amd64.tar.gz
+        mode: '0644'
+      when: helm_version_check.rc != 0
+      register: helm_download
+
+    - name: Extract Helm binary if downloaded
+      ansible.builtin.unarchive:
+        src: /tmp/helm-{{ helm_version }}-linux-amd64.tar.gz
+        dest: /tmp
+        remote_src: yes
+      when: helm_download.changed | default(false)
+
+    - name: Install Helm binary
+      ansible.builtin.copy:
+        src: /tmp/linux-amd64/helm
+        dest: /usr/local/bin/helm
+        mode: '0755'
+        remote_src: yes
+      when: helm_download.changed | default(false)
+      notify: verify_helm_installation
+
+    - name: Verify Helm installation
+      ansible.builtin.command:
+        cmd: helm version --client --short
+      register: helm_installed
+      changed_when: false
+      failed_when: helm_installed.rc != 0
+
+    - name: Display Helm version
+      ansible.builtin.debug:
+        msg: "Helm version: {{ helm_installed.stdout }}"
+
+    # ============================================
+    # PHASE 2: Ensure Kubernetes nodes are ready
+    # ============================================
+    - name: Wait for all Kubernetes nodes to be ready
+      ansible.builtin.command:
+        cmd: kubectl wait --for=condition=Ready nodes --all --timeout=300s
+      changed_when: false
+      retries: 3
+      delay: 10
+
+    # ============================================
+    # PHASE 3: Copy Helm chart from Ansible server to control plane
+    # ============================================
+    - name: Check if Helm chart exists on Ansible server
+      ansible.builtin.stat:
+        path: "{{ helm_chart_source }}/Chart.yaml"
+      register: chart_on_ansible
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Fail if chart not found on Ansible server
+      ansible.builtin.assert:
+        that:
+          - chart_on_ansible.stat.exists | bool
+        fail_msg: |
+          Helm chart Chart.yaml not found on Ansible server at:
+          {{ helm_chart_source }}/Chart.yaml
+          
+          Please ensure the helm-charts directory is copied to the Ansible server first using:
+          ./terraform/main/scripts/scp_helm_charts.sh
+        success_msg: "Helm chart found on Ansible server"
+
+    - name: Ensure destination directory exists on control plane
+      ansible.builtin.file:
+        path: "{{ helm_chart_dest | dirname }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Remove existing chart directory on control plane (for clean copy)
+      ansible.builtin.file:
+        path: "{{ helm_chart_dest }}"
+        state: absent
+      when: chart_on_ansible.stat.exists | bool
+
+    - name: Store control plane connection info before delegating
+      ansible.builtin.set_fact:
+        control_plane_host: "{{ ansible_host }}"
+        control_plane_user: "{{ ansible_user }}"
+        ssh_key_path: "{{ ansible_ssh_private_key_file | default('/home/ubuntu/labsuser.pem') }}"
+      changed_when: false
+
+    - name: Verify SSH key exists on Ansible server
+      ansible.builtin.stat:
+        path: "{{ ssh_key_path }}"
+      register: ssh_key_check
+      delegate_to: localhost
+      changed_when: false
+
+    - name: Set SSH key permissions on Ansible server
+      ansible.builtin.file:
+        path: "{{ ssh_key_path }}"
+        mode: '0600'
+      delegate_to: localhost
+      when: ssh_key_check.stat.exists | bool
+
+    - name: Fail if SSH key not found on Ansible server
+      ansible.builtin.assert:
+        that:
+          - ssh_key_check.stat.exists | bool
+        fail_msg: |
+          SSH key not found on Ansible server at: {{ ssh_key_path }}
+          Please ensure the key file exists on the Ansible server.
+          You may need to copy it using: scp_data.sh
+        success_msg: "SSH key found on Ansible server at {{ ssh_key_path }}"
+
+    - name: Copy Helm chart from Ansible server to control plane using tar+ssh
+      ansible.builtin.shell: |
+        cd {{ helm_chart_source | dirname }}
+        tar czf - {{ helm_chart_source | basename }} | ssh \
+          -i {{ ssh_key_path }} \
+          -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          -o IdentitiesOnly=yes \
+          {{ control_plane_user }}@{{ control_plane_host }} \
+          "mkdir -p {{ helm_chart_dest | dirname }} && cd {{ helm_chart_dest | dirname }} && tar xzf - && chown -R ubuntu:ubuntu {{ helm_chart_dest }}"
+      delegate_to: localhost
+      become: false
+      when: 
+        - chart_on_ansible.stat.exists | bool
+        - ssh_key_check.stat.exists | bool
+      register: chart_copy
+      changed_when: true
+      failed_when: chart_copy.rc != 0
+      no_log: false
+
+    # ============================================
+    # PHASE 4: Validate chart after copy
+    # ============================================
+    - name: Verify Chart.yaml exists on control plane after copy
+      ansible.builtin.stat:
+        path: "{{ helm_chart_dest }}/Chart.yaml"
+      register: chart_on_control_plane
+      changed_when: false
+
+    - name: Fail if Chart.yaml not found after copy
+      ansible.builtin.assert:
+        that:
+          - chart_on_control_plane.stat.exists | bool
+        fail_msg: |
+          Helm chart Chart.yaml not found on control plane after copy at:
+          {{ helm_chart_dest }}/Chart.yaml
+          
+          Copy may have failed. Please check the chart source and retry.
+        success_msg: "Helm chart Chart.yaml verified on control plane"
+
+    - name: Validate Helm chart
+      ansible.builtin.command:
+        cmd: helm lint {{ helm_chart_dest }}
+      register: helm_lint
+      changed_when: false
+      failed_when: helm_lint.rc != 0
+
+    # ============================================
+    # PHASE 5: Check Helm release status
+    # ============================================
+    - name: Check if Helm release exists
+      ansible.builtin.command:
+        cmd: helm list -q -n {{ helm_namespace }}
+      register: helm_releases
+      changed_when: false
+      failed_when: false
+
+    - name: Determine if release exists
+      ansible.builtin.set_fact:
+        release_exists: "{{ helm_release_name in helm_releases.stdout_lines | default([]) }}"
+
+    - name: Display release status
+      ansible.builtin.debug:
+        msg: |
+          Helm release status:
+          Release name: {{ helm_release_name }}
+          Namespace: {{ helm_namespace }}
+          Exists: {{ release_exists }}
+          All releases: {{ helm_releases.stdout_lines | default([]) }}
+
+    # ============================================
+    # PHASE 6: Install or Upgrade Helm chart
+    # ============================================
+    - name: Create namespace if it doesn't exist
+      ansible.builtin.command:
+        cmd: kubectl create namespace {{ helm_namespace }}
+      register: namespace_create
+      changed_when: namespace_create.rc == 0
+      failed_when: namespace_create.rc != 0 and "AlreadyExists" not in namespace_create.stderr
+
+    - name: Install Helm chart (new release)
+      ansible.builtin.command:
+        cmd: "helm install {{ helm_release_name }} {{ helm_chart_dest }} --namespace {{ helm_namespace }} --create-namespace --wait --timeout {{ helm_wait_timeout }}"
+      when: not release_exists | bool
+      register: helm_install_result
+      changed_when: helm_install_result.rc == 0
+
+    - name: Upgrade Helm chart (existing release)
+      ansible.builtin.command:
+        cmd: "helm upgrade {{ helm_release_name }} {{ helm_chart_dest }} --namespace {{ helm_namespace }} --wait --timeout {{ helm_wait_timeout }}"
+      when: release_exists | bool
+      register: helm_upgrade_result
+      changed_when: helm_upgrade_result.rc == 0
+
+    # ============================================
+    # PHASE 7: Verify deployment
+    # ============================================
+    - name: Get Helm release status
+      ansible.builtin.command:
+        cmd: helm status {{ helm_release_name }} -n {{ helm_namespace }}
+      register: helm_status
+      changed_when: false
+
+    - name: Get deployed pods
+      ansible.builtin.command:
+        cmd: kubectl get pods -l app.kubernetes.io/instance={{ helm_release_name }} -n {{ helm_namespace }}
+      register: deployed_pods
+      changed_when: false
+
+    - name: Display deployment summary
+      ansible.builtin.debug:
+        msg: |
+          ============================================
+          Helm Chart Deployment Complete
+          ============================================
+          Release Name: {{ helm_release_name }}
+          Namespace: {{ helm_namespace }}
+          Chart Path: {{ helm_chart_dest }}
+          
+          To check service endpoint, run on control plane:
+          kubectl get svc -n {{ helm_namespace }} | grep {{ helm_release_name }}
+          
+          To check pod status:
+          kubectl get pods -l app.kubernetes.io/instance={{ helm_release_name }} -n {{ helm_namespace }}
+          
+          To view Helm release:
+          helm status {{ helm_release_name }} -n {{ helm_namespace }}
+
+  handlers:
+    - name: verify_helm_installation
+      ansible.builtin.command:
+        cmd: helm version --client --short
+      changed_when: false
+

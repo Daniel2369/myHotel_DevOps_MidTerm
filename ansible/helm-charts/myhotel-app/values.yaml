@@ -1,10 +1,15 @@
 # Default values for myhotel-app
 
 # NFS Server Configuration
+# Note: This is for the real NFS server running on the controller node (outside Kubernetes)
 nfsServer:
   image: itsthenetwork/nfs-server-alpine:latest
   storageSize: 10Gi
-  serverPath: /exports
+  serverPath: /srv/nfs/k8s-data
+  # IP address of the controller node where NFS server is installed
+  # This should be set to the private IP of ec2-instance-1 (controller)
+  # Get this from: terraform output private_ec2_private_ip or from inventory.ini
+  serverIP: "10.0.11.240"  # Controller node private IP (ec2-instance-1)
 
 # Application Configuration
 app:

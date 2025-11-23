@@ -22,7 +22,8 @@ apt-get install -y \
   ca-certificates \
   gnupg \
   lsb-release \
-  awscli
+  awscli \
+  jq
 
 echo "=== Adding Ansible PPA and installing Ansible ==="
 add-apt-repository --yes --update ppa:ansible/ansible
@@ -49,6 +50,16 @@ echo "=== Setting up SSH directory for ubuntu user ==="
 mkdir -p /home/ubuntu/.ssh
 chmod 700 /home/ubuntu/.ssh
 chown ubuntu:ubuntu /home/ubuntu/.ssh
+
+echo "=== Setting up AWS directory for ubuntu user ==="
+mkdir -p /home/ubuntu/.aws
+chmod 700 /home/ubuntu/.aws
+chown ubuntu:ubuntu /home/ubuntu/.aws
+
+# Create credentials file if it doesn't exist and set permissions
+touch /home/ubuntu/.aws/credentials
+chmod 600 /home/ubuntu/.aws/credentials
+chown ubuntu:ubuntu /home/ubuntu/.aws/credentials
 
 echo "=== Ansible and Docker installation complete ==="
 ansible --version

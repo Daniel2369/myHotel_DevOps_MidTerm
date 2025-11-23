@@ -194,11 +194,13 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        d. terraform apply plan
     6. Generate ansible_vars.json:
        a. ./scripts/generate-ansible-vars.sh
+       b. ./scripts/update-inventory.sh
     7. Copy files to the Ansible server
        Note: Copy the certificate from the AWS lab's UI and copy it into the project directory .pem file and save
        a. chmod 400 labsuser.pem
-       b. Take 3 k8s private vm's from EC2 service and replace them inside the inventory.ini file, private-ec2-instance must be the first one.
-       c. ./scp_data.sh
+       b. ./scripts/scp_data.sh
+       c. update values.yaml with the controller private ip
+       d. ./scripts/scp_helm_charts.sh
     8. Ansible part:
        ssh -i /terraform/main/labsuser.pem ubuntu@<ANSIBLE_IP>
 
@@ -206,14 +208,6 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
         sudo su - # switch to root user
         # confirm files are present in /home/ubuntu
         ls -la
-        
-        # Install jq
-        apt-get update && sudo apt-get install -y jq
-        jq --version # validate
-        
-        # Set AWS creds using the .json file
-        mkdir -p /home/ubuntu/.aws
-        cd /home/ubuntu
 
          cat <<EOF > /home/ubuntu/.aws/credentials
          [default]
@@ -221,8 +215,6 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
          aws_secret_access_key = $(jq -r '.aws_secret_access_key' /home/ubuntu/ansible_vars.json)
          aws_session_token     = $(jq -r '.aws_session_token' /home/ubuntu/ansible_vars.json)
          EOF
-        
-        chmod 600 /home/ubuntu/.aws/credentials # Set permissions to read the file
 
         cat /home/ubuntu/.aws/credentials # verify
         
@@ -230,9 +222,11 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
         ansible-playbook -i inventory.ini install-k8s-cluster.yml --extra-vars "@ansible_vars.json" --private-key ./labsuser.pem -u ubuntu
          * After finish check VERIFY_K8S.md for tests of the control plane.
 
+       # Install NFS server and client:
+         ansible-playbook -i inventory.ini install-nfs-server.yml
+
        # Install Helm and deploy chart and application:
-         * Inside the host run /terraform/main/scripts/scp_helm_chards.sh
-         * Inside the Ansible server run: ansible-playbook -i inventory.ini helm-deploy-application.yml
+         ansible-playbook -i inventory.ini site.yaml
 
        
 

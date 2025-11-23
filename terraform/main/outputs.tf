@@ -28,6 +28,11 @@ output "asg_instance_ids" {
   value = data.aws_instances.asg.ids
 }
 
+output "alb_asg_autoscaling_group_name" {
+  description = "Name of the AutoScaling Group"
+  value       = module.alb_asg.autoscaling_group_name
+}
+
 // If you need instance private IPs for Ansible, generate them after apply
 // (e.g. with `terraform output -json` and a small script) or use the AWS
 // CLI to describe-instances by tag. Returning private IPs via data sources

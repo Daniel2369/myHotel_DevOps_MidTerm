@@ -280,6 +280,83 @@ resource "aws_vpc_security_group_ingress_rule" "allow_k8s_node_communication" {
   description                  = "Kubernetes node communication ports"
 }
 
+# NFS Server port (required for NFS mounts between pods and nodes)
+resource "aws_vpc_security_group_ingress_rule" "allow_nfs" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 2049
+  to_port                      = 2049
+  ip_protocol                  = "tcp"
+  description                  = "NFS server port"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_nfs_udp" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 2049
+  to_port                      = 2049
+  ip_protocol                  = "udp"
+  description                  = "NFS server port (UDP)"
+}
+
+# NFS mountd port
+resource "aws_vpc_security_group_ingress_rule" "allow_nfs_mountd" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 20048
+  to_port                      = 20048
+  ip_protocol                  = "tcp"
+  description                  = "NFS mountd port"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_nfs_mountd_udp" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 20048
+  to_port                      = 20048
+  ip_protocol                  = "udp"
+  description                  = "NFS mountd port (UDP)"
+}
+
+# NFS dynamic port range (for RPC services like mountd when using dynamic ports)
+# Linux typically uses 32768-65535 for ephemeral/dynamic ports
+resource "aws_vpc_security_group_ingress_rule" "allow_nfs_dynamic_ports" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 32768
+  to_port                      = 65535
+  ip_protocol                  = "tcp"
+  description                  = "NFS dynamic RPC ports (fallback for mountd)"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_nfs_dynamic_ports_udp" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 32768
+  to_port                      = 65535
+  ip_protocol                  = "udp"
+  description                  = "NFS dynamic RPC ports UDP (fallback for mountd)"
+}
+
+# RPCbind/Portmapper port (required for NFS)
+resource "aws_vpc_security_group_ingress_rule" "allow_rpcbind" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 111
+  to_port                      = 111
+  ip_protocol                  = "tcp"
+  description                  = "RPCbind/Portmapper port"
+}
+
+resource "aws_vpc_security_group_ingress_rule" "allow_rpcbind_udp" {
+  security_group_id            = aws_security_group.private_security_group.id
+  referenced_security_group_id = aws_security_group.private_security_group.id
+  from_port                    = 111
+  to_port                      = 111
+  ip_protocol                  = "udp"
+  description                  = "RPCbind/Portmapper port (UDP)"
+}
+
 resource "aws_vpc_security_group_egress_rule" "allow_outbound_all2" {
   security_group_id = aws_security_group.private_security_group.id
   cidr_ipv4         = "0.0.0.0/0"
