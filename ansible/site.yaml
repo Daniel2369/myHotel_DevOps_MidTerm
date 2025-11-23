@@ -223,17 +223,51 @@
 
     - name: Install Helm chart (new release)
       ansible.builtin.command:
-        cmd: "helm install {{ helm_release_name }} {{ helm_chart_dest }} --namespace {{ helm_namespace }} --create-namespace --wait --timeout {{ helm_wait_timeout }}"
+        cmd: "helm install {{ helm_release_name }} {{ helm_chart_dest }} --namespace {{ helm_namespace }} --create-namespace --wait --timeout 5m --wait-for-jobs"
       when: not release_exists | bool
       register: helm_install_result
       changed_when: helm_install_result.rc == 0
+      failed_when: false
+
+    - name: Check if Helm install succeeded or timed out (pods may still be ready)
+      ansible.builtin.command:
+        cmd: kubectl get pods -l app.kubernetes.io/instance={{ helm_release_name }} -n {{ helm_namespace }} -o jsonpath='{.items[*].status.phase}'
+      when: 
+        - not release_exists | bool
+        - helm_install_result.rc != 0
+      register: pod_phases
+      changed_when: false
+
+    - name: Fail if install failed and pods not running
+      ansible.builtin.assert:
+        that:
+          - helm_install_result.rc == 0 or "'Running' in pod_phases.stdout"
+        fail_msg: "Helm install failed and pods are not running. Check: kubectl get pods -n {{ helm_namespace }}"
+      when: not release_exists | bool
 
     - name: Upgrade Helm chart (existing release)
       ansible.builtin.command:
-        cmd: "helm upgrade {{ helm_release_name }} {{ helm_chart_dest }} --namespace {{ helm_namespace }} --wait --timeout {{ helm_wait_timeout }}"
+        cmd: "helm upgrade {{ helm_release_name }} {{ helm_chart_dest }} --namespace {{ helm_namespace }} --wait --timeout 5m --wait-for-jobs"
       when: release_exists | bool
       register: helm_upgrade_result
       changed_when: helm_upgrade_result.rc == 0
+      failed_when: false
+
+    - name: Check if Helm upgrade succeeded or timed out (pods may still be ready)
+      ansible.builtin.command:
+        cmd: kubectl get pods -l app.kubernetes.io/instance={{ helm_release_name }} -n {{ helm_namespace }} -o jsonpath='{.items[*].status.phase}'
+      when: 
+        - release_exists | bool
+        - helm_upgrade_result.rc != 0
+      register: pod_phases_upgrade
+      changed_when: false
+
+    - name: Fail if upgrade failed and pods not running
+      ansible.builtin.assert:
+        that:
+          - helm_upgrade_result.rc == 0 or "'Running' in pod_phases_upgrade.stdout"
+        fail_msg: "Helm upgrade failed and pods are not running. Check: kubectl get pods -n {{ helm_namespace }}"
+      when: release_exists | bool
 
     # ============================================
     # PHASE 7: Verify deployment

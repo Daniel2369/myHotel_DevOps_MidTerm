@@ -157,6 +157,12 @@ resource "aws_instance" "private_ec2" {
   subnet_id     = module.my_vpc.private_subnet_ids[0]
   vpc_security_group_ids = [module.my_vpc.private_security_group_id]
   
+  root_block_device {
+    volume_size = 30
+    volume_type = "gp2"
+    encrypted   = true
+  }
+  
   tags = {
     Name = "private-ec2-instance"
   }

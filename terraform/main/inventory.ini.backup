@@ -1,4 +1,4 @@
 [myhotel_ec2]
-ec2-instance-1 ansible_host=10.0.11.240 ansible_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/labsuser.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-ec2-instance-2 ansible_host=10.0.12.238 ansible_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/labsuser.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'
-ec2-instance-3 ansible_host=10.0.11.38 ansible_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/labsuser.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+ec2-instance-1 ansible_host=10.0.11.71 ansible_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/labsuser.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+ec2-instance-2 ansible_host=10.0.12.30 ansible_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/labsuser.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+ec2-instance-3 ansible_host=10.0.11.91 ansible_user=ubuntu ansible_ssh_private_key_file=/home/ubuntu/labsuser.pem ansible_ssh_common_args='-o StrictHostKeyChecking=no'

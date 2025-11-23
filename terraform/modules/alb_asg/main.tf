@@ -11,7 +11,7 @@
 
   resource "aws_lb_target_group" "this" {
     name        = "${var.alb_name}-tg"
-    port        = 8000
+    port        = 30080  # Match Kubernetes NodePort
     protocol    = "HTTP"
     target_type = "instance"
     vpc_id      = var.vpc_id
@@ -49,6 +49,16 @@
     user_data = base64encode(var.user_data)
     update_default_version = true
     vpc_security_group_ids = [var.ec2_security_group_id]
+
+    block_device_mappings {
+      device_name = "/dev/sda1"
+      ebs {
+        volume_size           = 30
+        volume_type           = "gp2"
+        encrypted             = true
+        delete_on_termination = true
+      }
+    }
 
     tag_specifications {
       resource_type = "instance"

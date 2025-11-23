@@ -4,14 +4,26 @@ metadata:
   name: {{ include "myhotel-app.fullname" . }}
   labels:
     {{- include "myhotel-app.labels" . | nindent 4 }}
+  # AWS Load Balancer annotations (only work with AWS Load Balancer Controller installed)
+  # For NodePort, these annotations are ignored
+  {{- if eq .Values.service.type "LoadBalancer" }}
   annotations:
     service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
     service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "HTTP"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "8000"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "10"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "5"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "3"
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
       targetPort: http
+      {% if eq .Values.service.type "NodePort" %}nodePort: {{ .Values.service.nodePort | default(30080) }}{% endif %}
       protocol: TCP
       name: http
   selector:
