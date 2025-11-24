@@ -174,7 +174,7 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        b. terraform init
        c. terraform apply -auto-approve
        This creates terraform-locks. Confirm the output shows the table name.
-    4. Run /Terraform/main/setup-tf-backend.sh
+    4. Run /Terraform/main/scripts/setup-tf-backend.sh
        a. Validate the following output is printed: DynamoDB table 'terraform-locks' already exists.
                                                     Terraform backend resources are ready.
        b. If there is a failure due to a taken S3 bucket name then change the name inside the following files and re-run the script:
@@ -197,10 +197,8 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
        b. ./scripts/update-inventory.sh
     7. Copy files to the Ansible server
        Note: Copy the certificate from the AWS lab's UI and copy it into the project directory .pem file and save
-       a. chmod 400 labsuser.pem
-       b. ./scripts/scp_data.sh
-       c. update values.yaml with the controller private ip
-       d. ./scripts/scp_helm_charts.sh
+       a. ./scripts/scp_data.sh
+       b. ./scripts/scp_helm_charts.sh
     8. Ansible part:
        ssh -i /terraform/main/labsuser.pem ubuntu@<ANSIBLE_IP>
 

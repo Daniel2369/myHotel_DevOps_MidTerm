@@ -172,6 +172,31 @@ done
 echo ""
 echo "✓ Successfully updated inventory.ini"
 echo ""
+
+# Update values.yaml with controller IP (NFS server IP)
+VALUES_YAML="$TF_ROOT_DIR/../../ansible/helm-charts/myhotel-app/values.yaml"
+if [[ -f "$VALUES_YAML" ]]; then
+  # Create backup
+  cp "$VALUES_YAML" "${VALUES_YAML}.backup"
+  
+  # Update serverIP line (handles both quoted and unquoted IPs)
+  if sed -i.bak "s|serverIP:.*#.*Controller|serverIP: \"$PRIVATE_EC2_IP\"  # Controller|g" "$VALUES_YAML" 2>/dev/null || \
+     sed -i.bak "s|serverIP:.*|serverIP: \"$PRIVATE_EC2_IP\"  # Controller node private IP (ec2-instance-1)|g" "$VALUES_YAML" 2>/dev/null; then
+    rm -f "${VALUES_YAML}.bak" 2>/dev/null || true
+    echo "✓ Successfully updated values.yaml with NFS server IP: $PRIVATE_EC2_IP"
+  else
+    # Fallback: use a more specific sed pattern
+    sed -i.bak "s|\(serverIP: \)\"[^\"]*\"|\\1\"$PRIVATE_EC2_IP\"|g" "$VALUES_YAML" 2>/dev/null || \
+    sed -i.bak "s|\(serverIP: \)[0-9.]*|\\1\"$PRIVATE_EC2_IP\"|g" "$VALUES_YAML" 2>/dev/null || true
+    rm -f "${VALUES_YAML}.bak" 2>/dev/null || true
+    echo "✓ Updated values.yaml with NFS server IP: $PRIVATE_EC2_IP"
+  fi
+else
+  echo "⚠ Warning: values.yaml not found at $VALUES_YAML"
+  echo "  Skipping values.yaml update"
+fi
+
+echo ""
 echo "Inventory contents:"
 cat "$INVENTORY_FILE"
 echo ""

@@ -23,7 +23,9 @@ spec:
   ports:
     - port: {{ .Values.service.port }}
       targetPort: http
-      {% if eq .Values.service.type "NodePort" %}nodePort: {{ .Values.service.nodePort | default(30080) }}{% endif %}
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.nodePort | default 30080 }}
+      {{- end }}
       protocol: TCP
       name: http
   selector:

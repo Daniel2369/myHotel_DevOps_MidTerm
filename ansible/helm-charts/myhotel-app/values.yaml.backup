@@ -9,7 +9,7 @@ nfsServer:
   # IP address of the controller node where NFS server is installed
   # This should be set to the private IP of ec2-instance-1 (controller)
   # Get this from: terraform output private_ec2_private_ip or from inventory.ini
-  serverIP: "10.0.11.119"  # Controller node private IP (ec2-instance-1)
+  serverIP: "10.0.11.210"  # Controller node private IP (ec2-instance-1)
 
 # Application Configuration
 app:
