@@ -16,7 +16,7 @@ on:
 env:
   AWS_REGION: us-east-1
   TERRAFORM_VERSION: 1.6.0
-  ANSIBLE_VERSION: 8.0.0
+  ANSIBLE_VERSION: 2.14.1
 
 jobs:
   deploy:
@@ -158,7 +158,6 @@ jobs:
       - name: Install Ansible
         run: |
           pip install ansible-core==${{ env.ANSIBLE_VERSION }}
-          pip install ansible
           ansible --version
 
       - name: Wait for Ansible server to be ready
