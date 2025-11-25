@@ -189,7 +189,8 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
 ```
 
 ## Automatic workflow
-   * Any change to code will trigger GitActions workflow
+   * Any change to code will trigger GitHub Actions workflow
+   * In case of repo fork configure in Github Secrets the variable from .Github directory readme.md
 
 ## Manual Steps
  ```bash
