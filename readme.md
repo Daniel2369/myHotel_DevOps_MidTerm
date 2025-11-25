@@ -8,6 +8,11 @@ Designed to demonstrate:
 * guest check-in/check-out functionalities
 All in a clean HTML UI.
 
+## Owners:
+   * Daniel Briliant
+   * Idan Less
+   * Finish date: 25/11/2025
+
 ## Deployment
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 ![Terraform](https://img.shields.io/badge/Terraform-844FBA?style=for-the-badge&logo=terraform&logoColor=white)
@@ -16,7 +21,14 @@ All in a clean HTML UI.
   * Application load balancer
   * Auto scaler
   * Launch template
-
+* Terraform IaaC
+* Kubernetes cluster for docker ochestration
+* Helm for applicaiton deployment in K8s
+* Ansible for Linux playbooks automations deployment of:
+  * K8s cluster 3 nodes
+  * NFS server and client with shared mount to host JSON DB
+  * Helm chart deployment
+* GitHub Secrets & Actions CI/CD
 ---
 ## 🌟 Project Overview
 
@@ -108,7 +120,19 @@ myHotel_DevOps_MidTerm/
 ├── backend.py
 ├── readme.md
 ├── ansible/
-│   └── ansible-playbook.yml
+│   └── install-k8s-cluster.yml # Kubernetes cluster
+|   --- install-nfs-server.yml # NFS server and client
+|   --- site.yml # Helm chart deployment
+|-- Helm charts/
+|-- Chart.yaml
+|-- values.yaml
+|-- |-- templates/
+|   |   |-- |-- configmap.yaml
+|   |   |-- |-- deployment.yaml
+|   |   |-- |-- nfs-server.yaml
+|   |   |-- |-- pv.yaml
+|   |   |-- |-- pvc.yaml
+|   |   |-- |-- service.yaml
 ├── templates/
 │   ├── menu.html
 │   ├── create_room.html
@@ -134,10 +158,13 @@ myHotel_DevOps_MidTerm/
 │   │   ├── terraform.tfstate, plan, inventory.ini
 │   │   ├── setup-tf-backend.sh, docker_image_push.sh, etc.
 │   │   ├── scripts/
+|   |   |-- |-- scp_helm_charts.sh
+|   |   |-- |-- setup-tf-backend.sh
+|   |   |-- |-- docker_image_push.sh
+|   |   |-- |-- update-inventory.sh
 │   │   │   ├── generate-ansible-vars.sh
 │   │   │   ├── scp_data.sh
 │   │   │   ├── destroy-infra.sh
-│   │   │   └── setup-tf-backend.sh
 │   └── modules/
 │       ├── alb_asg/
 │       ├── ecr/
@@ -161,10 +188,10 @@ docker run -d --name hotels-container -p 8000:8000 hotels:latest
 # Browse to http://<IPv4>:8000
 ```
 
-# AWS Deployment
-## 🚀 Deploment with Terraform IaaC!!!
-![Alt text for the image](https://github.com/Daniel2369/myHotel_DevOps_MidTerm/blob/1c541f51c9a7638f0d2248eb6ae7a264160cbfb2/static/MyHotel%20AWS%20Deployment%20Diagram.drawio.png)
+## Automatic workflow
+   * Any change to code will trigger GitActions workflow
 
+## Manual Steps
  ```bash
     1. Create the Docker image locally:
        * docker buildx build --platform linux/amd64 -t myhotel:latest .
