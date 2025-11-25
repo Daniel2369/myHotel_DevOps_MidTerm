@@ -1,0 +1,230 @@
+name: Deploy MyHotel Application
+
+on:
+  workflow_dispatch:  # Manual trigger
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'terraform/**'
+      - 'ansible/**'
+      - 'Dockerfile'
+      - 'backend.py'
+      - '.github/workflows/deploy.yml'
+
+env:
+  AWS_REGION: us-east-1
+  TERRAFORM_VERSION: 1.6.0
+  ANSIBLE_VERSION: 8.0.0
+
+jobs:
+  deploy:
+    name: Deploy Infrastructure and Application
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker buildx build --platform linux/amd64 -t myhotel:latest .
+          docker tag myhotel:latest ${{ secrets.DOCKERHUB_USERNAME }}/devops-final-project:latest
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/devops-final-project:latest
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Setup jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Create DynamoDB lock table (bootstrap)
+        working-directory: terraform/dynamoDB
+        run: |
+          terraform init
+          terraform apply -auto-approve
+
+      - name: Setup Terraform backend
+        working-directory: terraform/main
+        run: |
+          chmod +x scripts/setup-tf-backend.sh
+          ./scripts/setup-tf-backend.sh
+
+      - name: Setup Docker Hub credentials for Terraform
+        working-directory: terraform/main
+        run: |
+          export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
+          export DOCKERHUB_TOKEN="${{ secrets.DOCKERHUB_TOKEN }}"
+          echo "DOCKERHUB_USERNAME=$DOCKERHUB_USERNAME" >> $GITHUB_ENV
+          echo "DOCKERHUB_TOKEN=$DOCKERHUB_TOKEN" >> $GITHUB_ENV
+
+      - name: Push Docker image via script
+        working-directory: terraform/main
+        run: |
+          export DOCKERHUB_USERNAME="${{ secrets.DOCKERHUB_USERNAME }}"
+          export DOCKERHUB_TOKEN="${{ secrets.DOCKERHUB_TOKEN }}"
+          chmod +x scripts/docker_image_push.sh
+          ./scripts/docker_image_push.sh
+
+      - name: Initialize Terraform
+        working-directory: terraform/main
+        run: terraform init -reconfigure
+
+      - name: Terraform Plan
+        working-directory: terraform/main
+        run: terraform plan -out=plan
+
+      - name: Terraform Apply
+        working-directory: terraform/main
+        run: terraform apply -auto-approve plan
+
+      - name: Generate Ansible variables
+        working-directory: terraform/main
+        run: |
+          chmod +x scripts/generate-ansible-vars.sh
+          ./scripts/generate-ansible-vars.sh
+
+      - name: Update inventory
+        working-directory: terraform/main
+        run: |
+          chmod +x scripts/update-inventory.sh
+          ./scripts/update-inventory.sh
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/labsuser.pem
+          chmod 600 ~/.ssh/labsuser.pem
+          ssh-keyscan -H $(cd terraform/main && terraform output -raw ansible_server_eip 2>/dev/null || echo "") >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Get Ansible server IP
+        id: get-ansible-ip
+        working-directory: terraform/main
+        run: |
+          ANSIBLE_IP=$(terraform output -raw ansible_server_eip)
+          echo "ansible_ip=$ANSIBLE_IP" >> $GITHUB_OUTPUT
+          echo "Ansible server IP: $ANSIBLE_IP"
+
+      - name: Copy files to Ansible server
+        working-directory: terraform/main
+        run: |
+          chmod +x scripts/scp_data.sh
+          ./scripts/scp_data.sh
+
+      - name: Copy Helm charts to Ansible server
+        working-directory: terraform/main
+        run: |
+          chmod +x scripts/scp_helm_charts.sh
+          ./scripts/scp_helm_charts.sh
+
+      - name: Setup Ansible
+        uses: ansible/ansible-setup@v1
+        with:
+          ansible-version: ${{ env.ANSIBLE_VERSION }}
+
+      - name: Install Ansible dependencies
+        run: |
+          pip install ansible-core==${{ env.ANSIBLE_VERSION }}
+          pip install ansible[azure]  # Install additional Ansible modules if needed
+
+      - name: Wait for Ansible server to be ready
+        run: |
+          ANSIBLE_IP="${{ steps.get-ansible-ip.outputs.ansible_ip }}"
+          for i in {1..30}; do
+            if ssh -i ~/.ssh/labsuser.pem -o StrictHostKeyChecking=no -o ConnectTimeout=5 ubuntu@$ANSIBLE_IP "echo 'Server ready'" 2>/dev/null; then
+              echo "Ansible server is ready"
+              break
+            fi
+            echo "Waiting for Ansible server... ($i/30)"
+            sleep 10
+          done
+
+      - name: Copy SSH key to Ansible server
+        run: |
+          ANSIBLE_IP="${{ steps.get-ansible-ip.outputs.ansible_ip }}"
+          scp -i ~/.ssh/labsuser.pem ~/.ssh/labsuser.pem ubuntu@$ANSIBLE_IP:/home/ubuntu/labsuser.pem || true
+
+      - name: Setup AWS credentials on Ansible server
+        run: |
+          ANSIBLE_IP="${{ steps.get-ansible-ip.outputs.ansible_ip }}"
+          ssh -i ~/.ssh/labsuser.pem ubuntu@$ANSIBLE_IP << 'EOF'
+            mkdir -p ~/.aws
+            cat > ~/.aws/credentials << CREDS
+          [default]
+          aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_session_token=${{ secrets.AWS_SESSION_TOKEN }}
+          CREDS
+            chmod 600 ~/.aws/credentials
+            cat ~/.aws/credentials
+          EOF
+
+      - name: Run Kubernetes cluster installation
+        run: |
+          ANSIBLE_IP="${{ steps.get-ansible-ip.outputs.ansible_ip }}"
+          ssh -i ~/.ssh/labsuser.pem ubuntu@$ANSIBLE_IP << 'EOF'
+            cd /home/ubuntu
+            ansible-playbook -i inventory.ini install-k8s-cluster.yml \
+              --extra-vars "@ansible_vars.json" \
+              --private-key ./labsuser.pem \
+              -u ubuntu
+          EOF
+
+      - name: Run NFS server installation
+        run: |
+          ANSIBLE_IP="${{ steps.get-ansible-ip.outputs.ansible_ip }}"
+          ssh -i ~/.ssh/labsuser.pem ubuntu@$ANSIBLE_IP << 'EOF'
+            cd /home/ubuntu
+            ansible-playbook -i inventory.ini install-nfs-server.yml
+          EOF
+
+      - name: Deploy Helm chart and application
+        run: |
+          ANSIBLE_IP="${{ steps.get-ansible-ip.outputs.ansible_ip }}"
+          ssh -i ~/.ssh/labsuser.pem ubuntu@$ANSIBLE_IP << 'EOF'
+            cd /home/ubuntu
+            ansible-playbook -i inventory.ini site.yaml
+          EOF
+
+      - name: Get deployment information
+        working-directory: terraform/main
+        run: |
+          echo "=== Deployment Summary ==="
+          echo "ALB DNS Name:"
+          terraform output -raw alb_dns_name || echo "Not available"
+          echo ""
+          echo "Ansible Server IP:"
+          terraform output -raw ansible_server_eip || echo "Not available"
+          echo ""
+          echo "=== Access your application at: ==="
+          ALB_DNS=$(terraform output -raw alb_dns_name 2>/dev/null || echo "")
+          if [ -n "$ALB_DNS" ]; then
+            echo "http://$ALB_DNS"
+          else
+            echo "ALB DNS not available yet. Check AWS Console."
+          fi
+
