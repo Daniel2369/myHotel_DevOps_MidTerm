@@ -47,7 +47,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker buildx build --platform linux/amd64 -t myhotel:latest .
+          docker buildx build --platform linux/amd64 -t myhotel:latest --load .
           docker tag myhotel:latest ${{ secrets.DOCKERHUB_USERNAME }}/devops-final-project:latest
 
       - name: Push Docker image
