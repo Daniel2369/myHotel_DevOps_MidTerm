@@ -224,16 +224,17 @@ jobs:
         run: |
           echo "=== Deployment Summary ==="
           echo "ALB DNS Name:"
-          terraform output -raw alb_dns_name || echo "Not available"
+          terraform output -raw alb_asg_url 2>/dev/null || echo "Not available"
           echo ""
           echo "Ansible Server IP:"
-          terraform output -raw ansible_server_eip || echo "Not available"
+          terraform output -raw ansible_server_eip 2>/dev/null || echo "Not available"
           echo ""
           echo "=== Access your application at: ==="
-          ALB_DNS=$(terraform output -raw alb_dns_name 2>/dev/null || echo "")
-          if [ -n "$ALB_DNS" ]; then
+          ALB_DNS=$(terraform output -raw alb_asg_url 2>/dev/null || echo "")
+          if [ -n "$ALB_DNS" ] && [ "$ALB_DNS" != "null" ]; then
             echo "http://$ALB_DNS"
           else
             echo "ALB DNS not available yet. Check AWS Console."
+            echo "You can also get it manually: terraform output alb_asg_url"
           fi
 
