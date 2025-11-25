@@ -119,15 +119,22 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/labsuser.pem
           chmod 600 ~/.ssh/labsuser.pem
-          ssh-keyscan -H $(cd terraform/main && terraform output -raw ansible_server_eip 2>/dev/null || echo "") >> ~/.ssh/known_hosts 2>/dev/null || true
+          # Also copy to terraform/main where scripts expect it
+          mkdir -p terraform/main
+          cp ~/.ssh/labsuser.pem terraform/main/labsuser.pem
+          chmod 400 terraform/main/labsuser.pem
 
-      - name: Get Ansible server IP
+      - name: Get Ansible server IP and setup SSH
         id: get-ansible-ip
         working-directory: terraform/main
         run: |
           ANSIBLE_IP=$(terraform output -raw ansible_server_eip)
           echo "ansible_ip=$ANSIBLE_IP" >> $GITHUB_OUTPUT
           echo "Ansible server IP: $ANSIBLE_IP"
+          # Add to known_hosts
+          ssh-keyscan -H $ANSIBLE_IP >> ~/.ssh/known_hosts 2>/dev/null || true
+          # Test SSH connection
+          ssh -i terraform/main/labsuser.pem -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$ANSIBLE_IP "echo 'SSH connection test successful'" || echo "SSH test failed, but continuing..."
 
       - name: Copy files to Ansible server
         working-directory: terraform/main
@@ -140,6 +147,8 @@ jobs:
         run: |
           chmod +x scripts/scp_helm_charts.sh
           ./scripts/scp_helm_charts.sh
+        env:
+          ANSIBLE_IP: ${{ steps.get-ansible-ip.outputs.ansible_ip }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
