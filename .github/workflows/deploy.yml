@@ -141,15 +141,16 @@ jobs:
           chmod +x scripts/scp_helm_charts.sh
           ./scripts/scp_helm_charts.sh
 
-      - name: Setup Ansible
-        uses: ansible/ansible-setup@v1
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          ansible-version: ${{ env.ANSIBLE_VERSION }}
+          python-version: '3.11'
 
-      - name: Install Ansible dependencies
+      - name: Install Ansible
         run: |
           pip install ansible-core==${{ env.ANSIBLE_VERSION }}
-          pip install ansible[azure]  # Install additional Ansible modules if needed
+          pip install ansible
+          ansible --version
 
       - name: Wait for Ansible server to be ready
         run: |
